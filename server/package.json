@@ -1,0 +1,8 @@
+{
+  "name": "neurotrack-server",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": { "dev": "tsx watch src/index.ts", "build": "tsc -p tsconfig.json", "start": "node dist/index.js", "test": "tsx --test src/metrics.test.ts src/tinyfish.test.ts src/session-repository.test.ts" },
+  "dependencies": { "cors": "^2.8.5", "dotenv": "^16.4.7", "express": "^4.21.2", "express-rate-limit": "^7.5.0", "sql.js": "^1.13.0", "zod": "^3.24.1" },
+  "devDependencies": { "@types/cors": "^2.8.17", "@types/express": "^5.0.0", "@types/sql.js": "^1.4.9", "tsx": "^4.19.2", "typescript": "^5.7.3" }
+}

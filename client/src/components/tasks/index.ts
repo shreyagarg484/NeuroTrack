@@ -1,0 +1,11 @@
+export { default as NBackTask } from './NBackTask';
+export { default as ReactionTest } from '../ReactionTest';
+export { default as ChoiceReactionTask } from './ChoiceReactionTask';
+export { default as StroopTask } from './StroopTask';
+export { default as GoNoGoTask } from './GoNoGoTask';
+export { default as DigitSpanTask } from './DigitSpanTask';
+export { default as CorsiSpatialTask } from './CorsiSpatialTask';
+export { default as VisualSearchTask } from './VisualSearchTask';
+export { default as TimePerceptionTask } from './TimePerceptionTask';
+export { default as TrailMakingTask } from './TrailMakingTask';
+export { default as TaskPurposeCard } from '../TaskPurposeCard';

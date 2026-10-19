@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.pnpm-store/
+*.tsbuildinfo
+*.db
+.env
+.env.local
+server/.env
+*.sqlite
