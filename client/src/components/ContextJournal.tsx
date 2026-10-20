@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Activity, AlertCircle, BookOpen, CalendarDays, Check, Coffee, Moon, Pencil, RefreshCw, ShieldCheck, Trash2, X } from 'lucide-react';
 import HydrationTracker from './HydrationTracker';
+import { apiRequest } from '../services/api';
 
 type ContextEntry = {
   id: number;
@@ -50,12 +51,11 @@ export default function ContextJournal() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch('/api/context');
-      const payload: unknown = await response.json();
-      if (!response.ok) throw new Error(payload && typeof payload === 'object' && 'error' in payload && typeof payload.error === 'string' ? payload.error : `Could not load journal entries (HTTP ${response.status}).`);
+      const payload: unknown = await apiRequest('/api/context');
       if (!Array.isArray(payload)) throw new Error('The journal response was not a list.');
       setEntries(payload as ContextEntry[]);
     } catch (cause) {
+      setEntries([]);
       setError(cause instanceof Error ? cause.message : 'Could not load your context journal.');
     } finally {
       setLoading(false);
@@ -80,12 +80,8 @@ export default function ContextJournal() {
       notes: notes.trim()
     };
     try {
-      const response = await fetch(editingId === null ? '/api/context' : `/api/context/${editingId}`, { method: editingId === null ? 'POST' : 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
-      const result: unknown = await response.json().catch(() => null);
-      if (!response.ok || !result || typeof result !== 'object' || !('id' in result) || typeof result.id !== 'number') {
-        const reason = result && typeof result === 'object' && 'error' in result && typeof result.error === 'string' ? result.error : `HTTP ${response.status}`;
-        throw new Error(`Could not verify that this entry was saved (${reason}).`);
-      }
+      const result: unknown = await apiRequest(editingId === null ? '/api/context' : `/api/context/${editingId}`, { method: editingId === null ? 'POST' : 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
+      if (!result || typeof result !== 'object' || !('id' in result) || typeof result.id !== 'number') throw new Error('Could not verify that this entry was saved.');
       setEntries((current) => (editingId === null ? [result as ContextEntry, ...current] : current.map((entry) => entry.id === editingId ? result as ContextEntry : entry)).sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt)));
       setMessage(editingId === null ? 'Context entry saved.' : 'Context entry updated.');
       resetForm();
@@ -115,12 +111,8 @@ export default function ContextJournal() {
     setError(null);
     setMessage(null);
     try {
-      const response = await fetch(`/api/context/${id}`, { method: 'DELETE' });
-      const result: unknown = await response.json().catch(() => null);
-      if (!response.ok || !result || typeof result !== 'object' || !('deleted' in result) || result.deleted !== true) {
-        const reason = result && typeof result === 'object' && 'error' in result && typeof result.error === 'string' ? result.error : `HTTP ${response.status}`;
-        throw new Error(`Could not delete this entry (${reason}).`);
-      }
+      const result: unknown = await apiRequest(`/api/context/${id}`, { method: 'DELETE' });
+      if (!result || typeof result !== 'object' || !('deleted' in result) || result.deleted !== true) throw new Error('Could not verify that this entry was deleted.');
       setEntries((current) => current.filter((entry) => entry.id !== id));
       if (editingId === id) resetForm();
       setMessage('Entry deleted.');

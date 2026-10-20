@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { AlertCircle, Check, ChevronLeft, RotateCcw, ShieldCheck } from 'lucide-react';
 import TaskPurposeCard from '../TaskPurposeCard';
+import { apiRequest } from '../../services/api';
 
 export type SuiteTaskId = 'go-no-go' | 'digit-span' | 'corsi-spatial' | 'visual-search' | 'time-perception' | 'trail-making';
 const taskInfo: Record<SuiteTaskId, { title: string; description: string; duration: string }> = {
@@ -26,9 +27,8 @@ export default function LabSuiteTask({ task, onBack }: { task: SuiteTaskId; onBa
     const values = finalResults.flatMap((item) => item.responseMs === null ? [] : [item.responseMs]);
     const accuracy = finalResults.length ? Math.round(finalResults.filter((item) => item.correct).length / finalResults.length * 100) : 0;
     try {
-      const response = await fetch('/api/sessions', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ taskType: task, trials: finalResults.length, accuracy, medianRt: median(values), metrics, trialResults: finalResults }) });
-      const body: unknown = await response.json().catch(() => null);
-      if (!response.ok || !body || typeof body !== 'object' || !('saved' in body) || body.saved !== true) throw new Error(body && typeof body === 'object' && 'error' in body ? String(body.error) : `Save failed (HTTP ${response.status}).`);
+      const body: unknown = await apiRequest('/api/sessions', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ taskType: task, trials: finalResults.length, accuracy, medianRt: median(values), metrics, trialResults: finalResults }) });
+      if (!body || typeof body !== 'object' || !('saved' in body) || body.saved !== true) throw new Error('The API did not confirm that the session was saved.');
       setSaved(true);
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Could not save this session.'); }
     finally { setSaving(false); }

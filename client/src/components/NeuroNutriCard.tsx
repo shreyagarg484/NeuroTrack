@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { AlertCircle, Apple, Coffee, RefreshCw, ShieldCheck, Soup } from 'lucide-react';
+import { apiRequest } from '../services/api';
 
 type Checkin = {
   createdAt: string;
@@ -47,9 +48,7 @@ export default function NeuroNutriCard() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch('/api/checkins/latest');
-      if (!response.ok) throw new Error(`Could not load your latest check-in (HTTP ${response.status}).`);
-      const payload: unknown = await response.json();
+      const payload: unknown = await apiRequest('/api/checkins/latest');
       if (!payload || typeof payload !== 'object' || !('checkin' in payload)) throw new Error('The check-in response was not in the expected format.');
       const latest = (payload as { checkin: unknown }).checkin;
       if (latest === null) {
@@ -62,6 +61,7 @@ export default function NeuroNutriCard() {
         throw new Error('The latest check-in had an unexpected format.');
       }
     } catch (cause) {
+      setCheckin(null);
       setError(cause instanceof Error ? cause.message : 'Could not load recommendations right now.');
     } finally {
       setLoading(false);

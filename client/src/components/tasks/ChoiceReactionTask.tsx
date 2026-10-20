@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { AlertCircle, Check, Circle, RotateCcw, ShieldCheck, Sparkles, Square, Star, Triangle, Zap } from 'lucide-react';
 import TaskPurposeCard from '../TaskPurposeCard';
+import { apiRequest } from '../../services/api';
 
 type TargetId = 'circle' | 'triangle' | 'square' | 'star';
 type Screen = 'intro' | 'countdown' | 'practice' | 'practice-done' | 'active' | 'saving' | 'complete';
@@ -107,12 +108,8 @@ export default function ChoiceReactionTask() {
     const accuracy = Math.round(trialResults.filter((result) => result.correct).length / trialResults.length * 100);
     const medianRt = median(trialResults.map((result) => result.responseMs));
     try {
-      const response = await fetch('/api/sessions', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ taskType: 'choice-reaction', trials: trialResults.length, accuracy, medianRt, falseStarts: prematureClicks, trialResults }) });
-      const payload: unknown = await response.json().catch(() => null);
-      if (!response.ok || !payload || typeof payload !== 'object' || !('saved' in payload) || payload.saved !== true || !('id' in payload) || typeof payload.id !== 'number') {
-        const reason = payload && typeof payload === 'object' && 'error' in payload && typeof payload.error === 'string' ? payload.error : `HTTP ${response.status}`;
-        throw new Error(`Could not verify that this Choice Reaction session was saved (${reason}).`);
-      }
+      const payload: unknown = await apiRequest('/api/sessions', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ taskType: 'choice-reaction', trials: trialResults.length, accuracy, medianRt, falseStarts: prematureClicks, trialResults }) });
+      if (!payload || typeof payload !== 'object' || !('saved' in payload) || payload.saved !== true || !('id' in payload) || typeof payload.id !== 'number') throw new Error('Could not verify that this Choice Reaction session was saved.');
       setSaved(true);
     } catch (cause) {
       setSaveError(cause instanceof Error ? cause.message : 'Could not save this session. Check the API connection and retry.');

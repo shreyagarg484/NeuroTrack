@@ -2,14 +2,14 @@
   "name": "neurotrack",
   "version": "1.0.0",
   "private": true,
-  "workspaces": [
-    "client",
-    "server"
-  ],
+  "workspaces": ["client", "server"],
   "scripts": {
-    "install-all": "npm install && npm --prefix client install && npm --prefix server install",
-    "build": "npm run build --workspace=client",
-    "start": "npm --prefix server start",
+    "install-all": "npm install",
+    "dev": "concurrently -k \"npm:dev:server\" \"npm:dev:client\"",
+    "dev:server": "npm --workspace server run dev",
+    "dev:client": "npm --workspace client run dev",
+    "build": "npm --workspace client run build && npm --workspace server run build",
+    "start": "node server/dist/index.js",
     "test": "npm --workspace server test"
   },
   "devDependencies": {

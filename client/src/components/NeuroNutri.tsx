@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Apple, Fish, RefreshCw, ShieldCheck, Soup, Sprout } from 'lucide-react';
+import { apiRequest } from '../services/api';
 
 type Session = { createdAt: string; n?: number | null; taskType?: string; accuracy: number; medianRt: number; isSynthetic?: boolean | number };
 type Meal = { category: 'Hostel Budget'|'Fresh Fruit'|'Nutrient-Dense'; title: string; detail: string; price?: string; icon: 'soup'|'apple'|'sprout' };
@@ -31,10 +32,10 @@ export default function NeuroNutri() {
   const timer = useRef<number|undefined>();
   useEffect(() => {
     let active = true;
-    fetch('/api/sessions').then(async (response) => { if (!response.ok) throw new Error('Session scores are unavailable.'); const rows: unknown = await response.json(); if (!Array.isArray(rows)) throw new Error('Session score response was invalid.');
+    apiRequest<unknown>('/api/sessions').then((rows) => { if (!Array.isArray(rows)) throw new Error('Session score response was invalid.');
       const eligible = (rows as Session[]).filter((row) => !Boolean(row.isSynthetic) && (typeof row.n === 'number' || ['simple-reaction','go-no-go'].includes(row.taskType || '')) && Number.isFinite(row.accuracy) && Number.isFinite(row.medianRt)).sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
       if (active && eligible[0]) { const latest = eligible[0]; setUserScore(scoreFor(latest)); setScoreSource(`${latest.taskType || `${latest.n}-back`} · ${new Date(latest.createdAt).toLocaleDateString()}`); }
-    }).catch(() => { if (active) setError('Could not load recent task results. Showing the default preview score of 88.'); }).finally(() => { if (active) setScoreLoading(false); });
+    }).catch(() => { if (active) { setUserScore(88); setScoreSource('Default preview score · results unavailable'); setError('Could not load recent task results. Showing the default preview score of 88.'); } }).finally(() => { if (active) setScoreLoading(false); });
     return () => { active = false; window.clearTimeout(timer.current); };
   }, []);
   const mealSet = useMemo(() => userScore >= 80 ? meals.high : userScore >= 60 ? meals.moderate : meals.low, [userScore]);

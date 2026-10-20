@@ -190,3 +190,9 @@ body, .shell, .main { background: var(--nt-bg); color: var(--nt-text); }
 .trend-panel .recharts-cartesian-grid line { stroke: var(--nt-border); }
 .trend-panel .recharts-line path { stroke: var(--nt-cyan); }
 .trend-panel .recharts-dot { fill: var(--nt-violet); }
+.analytics-preview-toggle { align-self: end; padding: 8px 11px; border: 1px solid var(--border-violet); border-radius: 7px; background: #171328; color: #c9bedc; font: 600 9px Manrope, sans-serif; transition: background .18s, border-color .18s, color .18s; }
+.analytics-preview-toggle:hover, .analytics-preview-toggle.active { border-color: #8B5CF6; background: #281d43; color: #d7c6ff; }
+.analytics-preview-banner, .analytics-preview-note { margin: 10px 0; padding: 11px 13px; border: 1px solid #514078; border-radius: 8px; background: #201936; color: #d2c3f2; font-size: 12px; line-height: 1.5; }
+.analytics-preview-note { border-color: #344a65; background: #111d2c; color: #b7d9eb; }
+.analytics-chart-grid { align-items: stretch; }
+.analytics-chart-card .chart { min-height: 240px; }

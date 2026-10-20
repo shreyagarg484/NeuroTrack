@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { AlertCircle, Check, Clock3, MousePointer2, RotateCcw, Zap } from 'lucide-react';
 import TaskPurposeCard from './TaskPurposeCard';
+import { apiRequest } from '../services/api';
 
 const TRIAL_COUNT = 8;
 type TestStatus = 'idle' | 'waiting' | 'ready' | 'saving' | 'complete';
@@ -48,15 +49,13 @@ export default function ReactionTest() {
     try {
       const sorted = [...times].sort((a, b) => a - b);
       const medianRt = Math.round(sorted.length % 2 ? sorted[Math.floor(sorted.length / 2)] : (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2);
-      const response = await fetch('/api/sessions', {
+      const payload = await apiRequest<unknown>('/api/sessions', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ taskType: 'simple-reaction', trials: times.length, accuracy: 100, medianRt, metrics: { averageRtMs: average, fastCount }, trialResults: times.map((responseMs) => ({ trialType: 'simple', stimulus: 'visual cue', userResponse: 'clicked', correct: true, responseMs })) })
       });
-      const payload: unknown = await response.json().catch(() => null);
-      if (!response.ok || !payload || typeof payload !== 'object' || !('saved' in payload) || payload.saved !== true) {
-        const reason = payload && typeof payload === 'object' && 'error' in payload && typeof payload.error === 'string' ? payload.error : `HTTP ${response.status}`;
-        throw new Error(`Results could not be saved (${reason}).`);
+      if (!payload || typeof payload !== 'object' || !('saved' in payload) || payload.saved !== true) {
+        throw new Error('Results could not be verified as saved.');
       }
       setSaveMessage('Results saved to this device.');
     } catch (cause) {

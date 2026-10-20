@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Bell, Check, Droplets } from 'lucide-react';
+import { apiRequest } from '../services/api';
 
 type Props = { value?: number; onChange?: (liters: number) => void };
 const localDate = () => { const now = new Date(); return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`; };
@@ -11,9 +12,7 @@ export default function HydrationTracker({ value, onChange }: Props) {
 
   useEffect(() => {
     let active = true;
-    fetch(`/api/hydration?date=${localDate()}`).then(async (response) => {
-      if (!response.ok) return;
-      const data: unknown = await response.json();
+    apiRequest<unknown>(`/api/hydration?date=${localDate()}`).then((data) => {
       if (active && data && typeof data === 'object' && 'waterIntakeLiters' in data && typeof data.waterIntakeLiters === 'number') {
         setInternalWater(data.waterIntakeLiters);
         onChange?.(data.waterIntakeLiters);
@@ -26,9 +25,7 @@ export default function HydrationTracker({ value, onChange }: Props) {
     const next = Math.min(waterGoal, Math.round((waterCurrent + amount) * 100) / 100);
     setInternalWater(next); onChange?.(next); setSaving(true); setMessage('');
     try {
-      const response = await fetch('/api/hydration', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ date: localDate(), waterIntakeLiters: next }) });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data?.error || 'Could not save water intake.');
+      await apiRequest('/api/hydration', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ date: localDate(), waterIntakeLiters: next }) });
       setMessage('Saved to your daily context.');
     } catch (error) {
       setMessage(error instanceof Error ? `${error.message} The amount is shown here but may not be saved.` : 'Could not save water intake.');
