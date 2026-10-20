@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Activity, ArrowUpRight, BarChart3, Clock3, Filter, RefreshCw, Sparkles } from 'lucide-react';
+import { BarChart3, Filter, RefreshCw } from 'lucide-react';
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { apiRequest } from '../services/api';
 
@@ -9,7 +9,6 @@ type Session = {
   misses: number; isSynthetic?: boolean | number; taskType?: string;
   metrics?: Record<string, unknown>; metricsJson?: string; details?: Trial[]; detailsJson?: string;
 };
-type ContextEntry = { date: string; createdAt?: string; sleepQuality?: number | null; stress?: number | null; energy?: number | null; sleepDuration?: number | null };
 type TaskFilter = 'all' | 'n-back' | 'simple-reaction' | 'choice-reaction' | 'stroop' | 'go-no-go' | 'digit-span' | 'corsi-spatial' | 'visual-search' | 'time-perception' | 'trail-making';
 type Range = '7' | '30' | 'all';
 type Series = { key: string; name: string; color: string };
@@ -21,18 +20,6 @@ const taskLabels: Record<TaskFilter, string> = {
   'visual-search': 'Visual Search', 'time-perception': 'Time Perception', 'trail-making': 'Trail Making'
 };
 const testTasks = (Object.keys(taskLabels) as TaskFilter[]).filter((id) => id !== 'all');
-const guidance: Record<Exclude<TaskFilter, 'all'>, { focus: string; experiment: string }> = {
-  'n-back': { focus: 'Working memory and updating', experiment: 'Try a short, distraction-free practice block. Put notifications away and compare how the next session feels.' },
-  'simple-reaction': { focus: 'Alertness and response consistency', experiment: 'Keep your test setup and time of day similar. Experiment with a regular wind-down and enough sleep opportunity, then compare your response times.' },
-  'choice-reaction': { focus: 'Cue selection and response speed', experiment: 'Reduce interruptions before starting and take a brief reset between focused work blocks. Compare accuracy as well as speed.' },
-  stroop: { focus: 'Selective attention under conflict', experiment: 'Try single-tasking for a few minutes before testing. Close unrelated tabs and notice whether conflicting trials feel easier to manage.' },
-  'go-no-go': { focus: 'Sustained attention and response restraint', experiment: 'Choose a quiet setting and pause briefly before the task. Track both missed Go cues and No-Go responses rather than speed alone.' },
-  'digit-span': { focus: 'Brief verbal sequence retention', experiment: 'Try grouping a sequence into small chunks, then compare forward and backward practice across sessions. Keep practice brief and comfortable.' },
-  'corsi-spatial': { focus: 'Brief spatial sequence retention', experiment: 'Experiment with mentally grouping nearby locations or tracing a simple path. Record which approach feels useful to you.' },
-  'visual-search': { focus: 'Visual scanning and target detection', experiment: 'Take a short screen break before the task, then scan systematically from one side to the other. Compare misses and completion time.' },
-  'time-perception': { focus: 'Subjective time estimation', experiment: 'Before starting, make a deliberate estimate and use the same quiet setup each time. Compare estimates with the target without judging yourself.' },
-  'trail-making': { focus: 'Sequencing and goal maintenance', experiment: 'Preview the task instructions, clear visual clutter, and take one step at a time. Compare errors alongside completion time.' }
-};
 const isDev = import.meta.env.DEV;
 const mockAllowed = isDev || import.meta.env.VITE_ANALYTICS_MOCK_DATA === 'true';
 
@@ -53,64 +40,16 @@ function trials(session: Session): Trial[] {
   try { const result: unknown = JSON.parse(parsed); return Array.isArray(result) ? result as Trial[] : []; } catch { return []; }
 }
 function num(value: unknown, fallback = 0) { return typeof value === 'number' && Number.isFinite(value) ? value : fallback; }
-function dateText(value: string) { const date = new Date(value); return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); }
+function dateText(value: string) {
+  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  const date = dateOnly ? new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3])) : new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
 function dateKey(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value.slice(0, 10);
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
-function mean(values: number[]) { return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null; }
-function contextComparisons(rows: Session[], entries: ContextEntry[]): string[] {
-  const byDay = new Map<string, ContextEntry>();
-  for (const entry of entries) {
-    const key = entry.date?.slice(0, 10);
-    if (key && (!byDay.has(key) || (entry.createdAt ?? '') > (byDay.get(key)?.createdAt ?? ''))) byDay.set(key, entry);
-  }
-  const paired = rows.flatMap((session) => {
-    const context = byDay.get(dateKey(session.createdAt));
-    return context ? [{ session, context }] : [];
-  });
-  if (paired.length < 4) return ['Not enough same-day context and test records yet. Log context on more test days to explore personal patterns.'];
-
-  const comparisons: string[] = [];
-  const compare = (label: string, test: (entry: ContextEntry) => boolean, leftName: string, rightTest: (entry: ContextEntry) => boolean, rightName: string) => {
-    const left = paired.filter(({ context }) => test(context));
-    const right = paired.filter(({ context }) => rightTest(context));
-    if (left.length < 2 || right.length < 2) return;
-    const leftAccuracy = mean(left.map(({ session }) => session.accuracy));
-    const rightAccuracy = mean(right.map(({ session }) => session.accuracy));
-    const leftRt = mean(left.map(({ session }) => session.medianRt).filter(Number.isFinite));
-    const rightRt = mean(right.map(({ session }) => session.medianRt).filter(Number.isFinite));
-    const accuracyText = leftAccuracy !== null && rightAccuracy !== null ? `average accuracy was ${leftAccuracy.toFixed(0)}% vs ${rightAccuracy.toFixed(0)}%` : '';
-    const rtText = leftRt !== null && rightRt !== null ? `average median response time was ${Math.round(leftRt)} ms vs ${Math.round(rightRt)} ms` : '';
-    const outcome = [accuracyText, rtText].filter(Boolean).join(' and ');
-    if (outcome) comparisons.push(`${label}: on ${leftName} days (${left.length} sessions), ${outcome}; on ${rightName} days (${right.length} sessions).`);
-  };
-  compare('Sleep quality', (entry) => num(entry.sleepQuality) >= 4, 'higher sleep-quality', (entry) => num(entry.sleepQuality) <= 3, 'lower-or-mid sleep-quality');
-  compare('Stress rating', (entry) => num(entry.stress) <= 2, 'lower-stress', (entry) => num(entry.stress) >= 4, 'higher-stress');
-  return comparisons.length ? comparisons : ['Your same-day context logs are not yet split into groups with enough records to compare. Keep logging to build a clearer personal picture.'];
-}
-function recentTrend(rows: Session[]) {
-  if (rows.length < 4) return 'Complete a few more sessions to compare recent results with your earlier sessions.';
-  const ordered = [...rows].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-  const split = Math.floor(ordered.length / 2);
-  const earlier = ordered.slice(0, split), recent = ordered.slice(split);
-  const oldAccuracy = mean(earlier.map((row) => row.accuracy));
-  const newAccuracy = mean(recent.map((row) => row.accuracy));
-  const oldRt = mean(earlier.map((row) => row.medianRt));
-  const newRt = mean(recent.map((row) => row.medianRt));
-  const parts: string[] = [];
-  if (oldAccuracy !== null && newAccuracy !== null) {
-    const difference = Math.round(newAccuracy - oldAccuracy);
-    parts.push(`accuracy ${difference > 0 ? 'rose' : difference < 0 ? 'fell' : 'was similar'} by ${Math.abs(difference)} percentage points`);
-  }
-  if (oldRt !== null && newRt !== null) {
-    const difference = Math.round(newRt - oldRt);
-    parts.push(`median response time ${difference < 0 ? 'decreased' : difference > 0 ? 'increased' : 'was similar'} by ${Math.abs(difference)} ms`);
-  }
-  return `Compared with your earlier sessions, your recent records show ${parts.join(' and ')}. This describes your logged sessions; it does not explain why they changed.`;
-}
-
 function makePreviewSessions(): Session[] {
   const tasks: TaskFilter[] = ['n-back', 'simple-reaction', 'choice-reaction', 'stroop', 'go-no-go', 'digit-span', 'corsi-spatial', 'visual-search', 'time-perception', 'trail-making'];
   return tasks.flatMap((task, taskIndex) => Array.from({ length: 6 }, (_, index) => {
@@ -181,38 +120,50 @@ function getChartPlans(rows: Session[], task: TaskFilter): ChartPlan[] {
   return [plan('Accuracy over time', 'Correct responses per session.', generic, [line('accuracy', 'Accuracy (%)', '#8B5CF6')], [0, 100]), plan('Response time over time', 'Median response time per session (ms).', generic, [line('medianRt', 'Median response (ms)', '#06B6D4')])];
 }
 
+const taskColors = ['#8B5CF6', '#06B6D4', '#10B981', '#F59E0B', '#EC4899', '#60A5FA', '#A3E635', '#F97316', '#2DD4BF', '#C084FC'];
+function getDailyComparisonPlans(rows: Session[]): ChartPlan[] {
+  const grouped = new Map<string, Map<TaskFilter, Session[]>>();
+  for (const row of rows) {
+    const task = taskFor(row);
+    if (task === 'all' || task === 'other') continue;
+    const day = dateKey(row.createdAt);
+    if (!grouped.has(day)) grouped.set(day, new Map());
+    const dayTasks = grouped.get(day)!;
+    if (!dayTasks.has(task)) dayTasks.set(task, []);
+    dayTasks.get(task)!.push(row);
+  }
+  const data = [...grouped.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([day, dayTasks]) => {
+    const point: Record<string, string | number> = { day: dateText(day) };
+    for (const [task, dayRows] of dayTasks) {
+      point[`accuracy-${task}`] = Math.round(dayRows.reduce((sum, row) => sum + row.accuracy, 0) / dayRows.length);
+      point[`response-${task}`] = Math.round(dayRows.reduce((sum, row) => sum + row.medianRt, 0) / dayRows.length);
+    }
+    return point;
+  });
+  const availableTasks = testTasks.filter((task) => rows.some((row) => taskFor(row) === task));
+  const accuracySeries = availableTasks.map((task) => ({ key: `accuracy-${task}`, name: taskLabels[task], color: taskColors[testTasks.indexOf(task)] }));
+  const responseSeries = availableTasks.map((task) => ({ key: `response-${task}`, name: taskLabels[task], color: taskColors[testTasks.indexOf(task)] }));
+  return [
+    { title: 'Daily accuracy comparison', description: 'Correct responses per test, averaged within each day (%)', data, series: accuracySeries, domain: [0, 100] },
+    { title: 'Daily response time comparison', description: 'Median response time by test and day (ms); compare changes within each test.', data, series: responseSeries }
+  ];
+}
+
+function ChartTooltip({ active, payload, label, series, unit }: { active?: boolean; payload?: Array<{ name?: string; value?: number | string; color?: string; dataKey?: string }>; label?: string | number; series: Series[]; unit: string }) {
+  if (!active || !payload?.length) return null;
+  return <div className="analytics-tooltip"><b>{label}</b>{payload.filter((item) => item.value !== undefined).map((item, index) => <span key={`${item.name}-${index}`}><i style={{ background: series.find((line) => line.key === item.dataKey)?.color ?? item.color }}/>{item.name}<strong>{typeof item.value === 'number' ? `${Math.round(item.value).toLocaleString()}${unit}` : item.value}</strong></span>)}</div>;
+}
+
 function ChartCard({ chart }: { chart: ChartPlan }) {
   const chartId = chart.title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-  return <div className="panel analytics-chart-card"><div className="panel-head"><div><h2>{chart.title}</h2><p>{chart.description} · N = {chart.data.length}</p></div></div><div className="chart"><ResponsiveContainer width="100%" height="100%"><LineChart data={chart.data} margin={{ top: 10, right: 12, bottom: 0, left: -12 }}><defs>{chart.series.map((series) => <linearGradient key={series.key} id={`${chartId}-${series.key}`} x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor={series.color} stopOpacity={0.5}/><stop offset="55%" stopColor={series.color} stopOpacity={1}/><stop offset="100%" stopColor={series.color} stopOpacity={0.72}/></linearGradient>)}</defs><CartesianGrid stroke="#2e2744" vertical={false} strokeDasharray="4 5"/><XAxis dataKey="day" axisLine={false} tickLine={false} tickMargin={10} minTickGap={22} tick={{ fill: '#9CA3AF', fontSize: 11 }}/><YAxis domain={chart.domain} axisLine={false} tickLine={false} width={48} tickMargin={8} tick={{ fill: '#9CA3AF', fontSize: 11 }}/><Tooltip cursor={{ stroke: '#8B5CF6', strokeDasharray: '4 4' }} contentStyle={{ background: '#161224', border: '1px solid #514078', borderRadius: 10, color: '#F9FAFB', boxShadow: '0 14px 40px #0008' }} labelStyle={{ color: '#d9caff', fontWeight: 700 }} itemStyle={{ color: '#F9FAFB' }}/>{chart.series.map((series) => <Line key={series.key} type="monotone" dataKey={series.key} name={series.name} stroke={`url(#${chartId}-${series.key})`} strokeWidth={3} dot={{ r: 3.5, fill: series.color, stroke: '#161224', strokeWidth: 2 }} activeDot={{ r: 6, fill: series.color, stroke: '#fff', strokeWidth: 2 }} connectNulls animationDuration={500}/>)}</LineChart></ResponsiveContainer></div><div className="analytics-chart-legend">{chart.series.map((series) => <span key={series.key}><i style={{ background: series.color }}/>{series.name}</span>)}</div></div>;
-}
-
-function TaskOverview({ task, rows, onSelect }: { task: Exclude<TaskFilter, 'all'>; rows: Session[]; onSelect: (task: TaskFilter) => void }) {
-  const latest = [...rows].sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
-  const info = guidance[task];
-  return <button className="analytics-task-tile" type="button" onClick={() => onSelect(task)}>
-    <span className="analytics-task-icon"><Activity size={17}/></span>
-    <span className="analytics-task-title">{taskLabels[task]}<small>{info.focus}</small></span>
-    <span className="analytics-task-metrics"><b>{rows.length}</b><small>sessions</small></span>
-    {latest ? <span className="analytics-task-metrics"><b>{latest.accuracy}%</b><small>latest accuracy</small></span> : <span className="analytics-task-metrics"><b>—</b><small>no sessions yet</small></span>}
-    <ArrowUpRight className="analytics-task-arrow" size={17}/>
-  </button>;
-}
-
-function GuidanceCard({ task, rows }: { task: Exclude<TaskFilter, 'all'>; rows: Session[] }) {
-  const info = guidance[task];
-  return <div className="panel analytics-guidance">
-    <span className="analytics-card-kicker"><Sparkles size={14}/> PERSONALIZED INSIGHTS &amp; GUIDANCE</span>
-    <h2>{info.focus}</h2>
-    <p className="analytics-trend-summary">{recentTrend(rows)}</p>
-    <div className="analytics-experiment"><b>A small experiment to try</b><p>{info.experiment}</p></div>
-    <small>These are practical self-tracking ideas, not medical advice or a diagnosis. Try one change at a time and see whether your own records shift.</small>
-  </div>;
+  const isAccuracy = chart.title.toLowerCase().includes('accuracy');
+  const unit = isAccuracy ? '%' : chart.title.toLowerCase().includes('response time') || chart.title.toLowerCase().includes('reaction time') ? ' ms' : '';
+  return <div className="panel analytics-chart-card"><div className="panel-head"><div><h2>{chart.title}</h2><p>{chart.description} · {chart.data.length ? `N = ${chart.data.length} days` : 'No data'}</p></div></div><div className="chart"><ResponsiveContainer width="100%" height="100%"><LineChart data={chart.data} margin={{ top: 10, right: 12, bottom: 0, left: -12 }}><defs>{chart.series.map((series) => <linearGradient key={series.key} id={`${chartId}-${series.key}`} x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor={series.color} stopOpacity={0.5}/><stop offset="55%" stopColor={series.color} stopOpacity={1}/><stop offset="100%" stopColor={series.color} stopOpacity={0.72}/></linearGradient>)}</defs><CartesianGrid stroke="#392e55" vertical={false} strokeDasharray="4 5"/><XAxis dataKey="day" axisLine={false} tickLine={false} tickMargin={10} minTickGap={22} tick={{ fill: '#C5BBD8', fontSize: 11 }}/><YAxis domain={chart.domain} axisLine={false} tickLine={false} width={48} tickMargin={8} tickFormatter={(value: number) => isAccuracy ? `${value}%` : value.toLocaleString()} tick={{ fill: '#C5BBD8', fontSize: 11 }}/><Tooltip cursor={{ stroke: '#8B5CF6', strokeDasharray: '4 4' }} content={<ChartTooltip series={chart.series} unit={unit}/>}/>{chart.series.map((series) => <Line key={series.key} type="monotone" dataKey={series.key} name={series.name} stroke={`url(#${chartId}-${series.key})`} strokeWidth={3} dot={{ r: 3.5, fill: series.color, stroke: '#161224', strokeWidth: 2 }} activeDot={{ r: 6, fill: series.color, stroke: '#fff', strokeWidth: 2 }} connectNulls animationDuration={500} style={{ filter: `drop-shadow(0 0 5px ${series.color}77)` }}/>)}</LineChart></ResponsiveContainer></div><div className="analytics-chart-legend">{chart.series.map((series) => <span key={series.key}><i style={{ background: series.color }}/>{series.name}</span>)}</div></div>;
 }
 
 export default function Analytics() {
   const envMock = import.meta.env.VITE_ANALYTICS_MOCK_DATA === 'true';
   const [sessions, setSessions] = useState<Session[]>([]);
-  const [contextEntries, setContextEntries] = useState<ContextEntry[]>([]);
   const [task, setTask] = useState<TaskFilter>('all');
   const [range, setRange] = useState<Range>('30');
   const [loading, setLoading] = useState(true);
@@ -222,16 +173,13 @@ export default function Analytics() {
 
   async function load() {
     setLoading(true); setError('');
-    const contextRequest = apiRequest<unknown>('/api/context').then((rows) => Array.isArray(rows) ? rows as ContextEntry[] : []).catch(() => [] as ContextEntry[]);
-    if (previewMode) {
-      setSessions(previewSessions); setUsingMock(true); setContextEntries(await contextRequest); setLoading(false); return;
-    }
-    const [sessionsResult, contextRows] = await Promise.allSettled([apiRequest<unknown>('/api/sessions'), contextRequest]);
-    setContextEntries(contextRows.status === 'fulfilled' ? contextRows.value : []);
-    if (sessionsResult.status === 'fulfilled' && Array.isArray(sessionsResult.value)) {
-      setSessions(sessionsResult.value as Session[]); setUsingMock(false);
+    if (previewMode) { setSessions(previewSessions); setUsingMock(true); setLoading(false); return; }
+    const sessionsResult = await Promise.allSettled([apiRequest<unknown>('/api/sessions')]);
+    const result = sessionsResult[0];
+    if (result.status === 'fulfilled' && Array.isArray(result.value)) {
+      setSessions(result.value as Session[]); setUsingMock(false);
     } else {
-      const cause = sessionsResult.status === 'rejected' ? sessionsResult.reason : new Error('The API returned an invalid session list.');
+      const cause = result.status === 'rejected' ? result.reason : new Error('The API returned an invalid session list.');
       const reason = cause instanceof Error ? cause.message : 'Could not load analytics sessions.';
       if (mockAllowed) { setSessions(previewSessions); setUsingMock(true); setError(`${reason} Showing clearly labeled preview samples.`); }
       else { setSessions([]); setUsingMock(false); setError(reason); }
@@ -247,12 +195,11 @@ export default function Analytics() {
       return (task === 'all' || type === task) && Date.parse(row.createdAt) >= cutoff && (usingMock || !Boolean(row.isSynthetic));
     }).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   }, [sessions, task, range, usingMock]);
-  const accuracy = filtered.length ? Math.round(filtered.reduce((sum, row) => sum + row.accuracy, 0) / filtered.length) : 0;
-  const rtValues = filtered.map((row) => row.medianRt).filter(Number.isFinite).sort((a, b) => a - b);
-  const medianRt = rtValues.length ? Math.round(rtValues[Math.floor((rtValues.length - 1) / 2)]) : 0;
-  const plans = useMemo(() => getChartPlans(filtered, task), [filtered, task]);
-  const rowsForTask = (id: Exclude<TaskFilter, 'all'>) => sessions.filter((row) => taskFor(row) === id && Date.parse(row.createdAt) >= (range === 'all' ? 0 : Date.now() - Number(range) * 86_400_000) && (usingMock || !Boolean(row.isSynthetic))).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-  const selectedTaskRows = task === 'all' ? [] : filtered;
+  const previewCutoff = range === 'all' ? 0 : Date.now() - Number(range) * 86_400_000;
+  const rangePreview = previewSessions.filter((row) => Date.parse(row.createdAt) >= previewCutoff);
+  const isSampleView = filtered.length === 0;
+  const chartRows = isSampleView ? rangePreview.filter((row) => task === 'all' || taskFor(row) === task) : filtered;
+  const plans = useMemo(() => task === 'all' ? getDailyComparisonPlans(chartRows) : getChartPlans(chartRows, task), [chartRows, task]);
 
   return <section className="analytics-violet" aria-label="Interactive cognitive performance analytics">
     <div className="analytics-toolbar panel"><div><span className="eyebrow"><Filter size={13}/> INTERACTIVE FILTERS</span><h2>Explore your personal session trends</h2><p>{usingMock ? 'Preview samples are synthetic and are not personal records.' : 'Only non-synthetic sessions are shown; trends are descriptive, not diagnostic.'}</p></div><button className="neuronutri-refresh" type="button" onClick={() => void load()} disabled={loading} aria-label="Refresh analytics"><RefreshCw size={15}/></button><div className="analytics-filters"><label>Task<select value={task} onChange={(event) => setTask(event.target.value as TaskFilter)}>{(Object.keys(taskLabels) as TaskFilter[]).map((id) => <option key={id} value={id}>{taskLabels[id]}</option>)}</select></label><label>Date range<select value={range} onChange={(event) => setRange(event.target.value as Range)}><option value="7">7 Days</option><option value="30">30 Days</option><option value="all">All Time</option></select></label>{mockAllowed && <button className={`analytics-preview-toggle ${previewMode ? 'active' : ''}`} type="button" aria-pressed={previewMode} onClick={() => setPreviewMode((value) => !value)}>{previewMode ? 'Preview data: on' : 'Preview data: off'}</button>}</div></div>
@@ -260,20 +207,11 @@ export default function Analytics() {
       <button type="button" className={task === 'all' ? 'active' : ''} aria-pressed={task === 'all'} onClick={() => setTask('all')}>Overview</button>
       {testTasks.map((id) => <button key={id} type="button" className={task === id ? 'active' : ''} aria-pressed={task === id} onClick={() => setTask(id)}>{taskLabels[id]}</button>)}
     </nav>
-    <div className="analytics-violet-stats"><div className="panel"><span><Activity size={15}/> {usingMock ? 'PREVIEW SESSIONS' : 'PERSONAL SESSIONS'}</span><b>N = {filtered.length}</b><small>{taskLabels[task]} · {range === 'all' ? 'all recorded dates' : `last ${range} days`}</small></div><div className="panel"><span><BarChart3 size={15}/> MEAN ACCURACY</span><b>{filtered.length ? `${accuracy}%` : '—'}</b><small>Across filtered sessions</small></div><div className="panel"><span><Clock3 size={15}/> MEDIAN RESPONSE</span><b>{filtered.length ? `${medianRt} ms` : '—'}</b><small>Across filtered sessions</small></div></div>
     {error && <div className={usingMock ? 'analytics-preview-note' : 'scheduler-error'} role={usingMock ? 'status' : 'alert'}>{error}</div>}
-    {loading ? <div className="panel analytics-empty">Loading session and context records…</div> : task === 'all' ? <>
-      {usingMock && <div className="analytics-preview-banner">Synthetic preview samples are shown for layout exploration; they are not personal records.</div>}
-      <div className="analytics-task-grid">{testTasks.map((id) => <TaskOverview key={id} task={id} rows={rowsForTask(id)} onSelect={setTask}/>)}</div>
-      {!sessions.length && <div className="panel analytics-empty"><span className="empty-icon"><BarChart3 size={23}/></span><b>No sessions recorded yet</b><small>Complete a cognitive task to see its personal trend. Select a test above to explore its metrics and guidance.</small></div>}
-    </> : <>
-      {usingMock && <div className="analytics-preview-banner">Synthetic preview data · generated only for chart layout and interaction testing.</div>}
-      {filtered.length ? <>
-        <div className="analytics-chart-grid">{plans.map((chart) => <ChartCard key={chart.title} chart={chart}/>)}</div>
-        <section className="panel analytics-correlation"><span className="analytics-card-kicker"><Activity size={14}/> CONTEXT &amp; TREND ALIGNMENT</span><h2>How logged context lines up with this test</h2><div className="analytics-correlation-list">{contextComparisons(selectedTaskRows, contextEntries).map((line, index) => <p key={index}>{line}</p>)}</div><small>Same-day comparisons describe your own logs only. They cannot show that a context factor caused a performance change.</small></section>
-        <GuidanceCard task={task} rows={selectedTaskRows}/>
-        <div className="panel analytics-table"><div className="panel-head"><div><h2>{usingMock ? 'Preview sample details' : 'Filtered session details'}</h2><p>{usingMock ? 'These records are synthetic examples.' : 'Personal session samples are listed by date.'}</p></div></div>{filtered.slice().reverse().map((row) => <div className="analytics-session-row" key={`${row.taskType || row.n}-${row.id}-${row.createdAt}`}><time>{new Date(row.createdAt).toLocaleString()}</time><b>{taskLabels[taskFor(row) as TaskFilter] || 'Other'}</b><span>{row.accuracy}% accuracy</span><span>{row.medianRt} ms median</span></div>)}</div>
-      </> : <><div className="panel analytics-empty"><span className="empty-icon"><BarChart3 size={23}/></span><b>No {taskLabels[task]} sessions in this range</b><small>Try a wider date range or complete this test. Your chart will appear when a session is saved.</small></div><GuidanceCard task={task} rows={selectedTaskRows}/></>}
+    {loading ? <div className="panel analytics-empty">Loading performance trends…</div> : <>
+      {(isSampleView || usingMock) && <div className="analytics-preview-banner">SAMPLE PREVIEW · Synthetic trend lines for presentation only. These values are not personal test results.</div>}
+      {plans.length ? <div className="analytics-chart-grid">{plans.map((chart) => <ChartCard key={chart.title} chart={chart}/>)}</div> : <div className="panel analytics-empty"><span className="empty-icon"><BarChart3 size={23}/></span><b>No trend data available</b><small>Complete a cognitive test or choose a wider date range to see daily performance graphs.</small></div>}
+      {!isSampleView && <p className="analytics-data-note">Graphs use saved cognitive test sessions only. Daily values average multiple sessions of the same test.</p>}
     </>}
   </section>;
 }
