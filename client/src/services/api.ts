@@ -1,8 +1,8 @@
-const configuredApiBase = (import.meta.env.VITE_API_URL as string | undefined)?.trim().replace(/\/+$/, '') ?? '';
+const configuredApiBase = (import.meta.env.VITE_API_URL as string | undefined)?.trim().replace(/\/+$/, '')
+  || 'http://localhost:3001';
 
 /** VITE_API_URL is the backend origin (for example, https://api.example.com).
- * When unset, same-origin /api requests use the Vite proxy in development and
- * the Express host in production.
+ * Local development falls back to the Express server on port 3001.
  */
 export function apiUrl(path: string): string {
   const apiPath = path.startsWith('/') ? path : `/${path}`;
@@ -50,5 +50,18 @@ export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T
     return await response.json() as T;
   } catch {
     throw new Error('The API returned invalid JSON. Please retry or check the server response.');
+  }
+}
+
+/**
+ * Use for read-only requests where missing data is safe (for example, an
+ * unavailable session list). Mutations should use apiRequest so a failed save
+ * remains visible to the user instead of looking successful.
+ */
+export async function apiRequestSafe<T>(path: string, fallback: T, init?: RequestInit): Promise<T> {
+  try {
+    return await apiRequest<T>(path, init);
+  } catch {
+    return fallback;
   }
 }
