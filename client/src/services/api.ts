@@ -1,8 +1,9 @@
-const configuredApiBase = (import.meta.env.VITE_API_URL as string | undefined)?.trim().replace(/\/+$/, '')
-  || 'http://localhost:3001';
+const configuredApiBase = ((import.meta.env.VITE_API_URL as string | undefined)?.trim() || '').replace(/\/+$/, '');
 
 /** VITE_API_URL is the backend origin (for example, https://api.example.com).
- * Local development falls back to the Express server on port 3001.
+ * When it is empty the app calls the same origin, so a single deployed backend
+ * serves both the API and the built frontend. Local development keeps working
+ * because Vite proxies /api to the Express server on port 3001.
  */
 export function apiUrl(path: string): string {
   const apiPath = path.startsWith('/') ? path : `/${path}`;
