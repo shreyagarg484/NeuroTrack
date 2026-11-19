@@ -8,7 +8,7 @@ import { createSessionRepository } from './session-repository.js';
 test('a completed N-back session saved by the task appears in the Analytics session list', async () => {
   const require = createRequire(import.meta.url);
   const wasmDirectory = dirname(require.resolve('sql.js'));
-  const SQL = await initSqlJs({ locateFile: (file) => resolve(wasmDirectory, file) });
+  const SQL = await initSqlJs({ locateFile: (file) => resolve(wasmDirectory, file), useOldExtensionFunctions: false });
   const db = new SQL.Database();
   db.run(`CREATE TABLE sessions (
     id INTEGER PRIMARY KEY,
