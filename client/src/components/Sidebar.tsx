@@ -1,18 +1,211 @@
-import { Apple, BarChart3, BookOpen, Brain, ChevronDown, FlaskConical, Home, Lightbulb, ListTodo, Network, Settings2, ShieldCheck, Smartphone, Timer, X } from 'lucide-react';
+import {
+  Apple,
+  BarChart3,
+  BookOpen,
+  Brain,
+  CircleHelp,
+  Home,
+  Layers3,
+  ListTodo,
+  LogOut,
+  MoreHorizontal,
+  Network,
+  Settings2,
+  ShieldCheck,
+  Sparkles,
+  Timer,
+  X,
+} from 'lucide-react';
 
-const items=[
-  {page:'Overview',label:'Overview Dashboard',icon:Home},
-  {page:'Testing lab',label:'Cognitive Lab',icon:FlaskConical},
-  {page:'Task Scheduler',label:'Task Scheduler',icon:ListTodo},
-  {page:'Focus & Habits',label:'Focus & Deep Work Tracker',icon:Timer},
-  {page:'Context Journal & Check-in',label:'Context Journal & Hydration Tracker',icon:BookOpen},
-  {page:'Analytics',label:'Analytics & Trends',icon:BarChart3},
-  {page:'Insights',label:'Personal Insights Engine',icon:Lightbulb},
-  {page:'NeuroNutri',label:'NeuroNutri Fueling',icon:Apple},
-  {page:'Learn',label:'Learning & Science Hub',icon:Network},
-  {page:'Privacy & settings',label:'Data & Privacy Center',icon:ShieldCheck},
-  {page:'Settings',label:'Settings',icon:Settings2}
-];
-export default function Sidebar({active,onSelect,open,onClose}:{active:string;onSelect:(page:string)=>void;open:boolean;onClose:()=>void}){
-  return <aside className={open?'sidebar open':'sidebar'}><div className="brand"><span className="brand-icon"><Network size={21}/></span><span>NeuroTrack<small>COGNITIVE SELF-TRACKING</small></span><button className="close-nav" onClick={onClose} aria-label="Close navigation"><X size={18}/></button></div><div className="side-label">WORKSPACE</div><nav aria-label="Main navigation">{items.map(({page,label,icon:Icon})=><button key={page} className={active===page?'nav-item active':'nav-item'} onClick={()=>{onSelect(page);onClose();}}><Icon size={17}/><span>{label}</span>{page==='Analytics'&&<span className="nav-dot"/>}</button>)}</nav><div className="side-bottom"><div className="privacy-mini"><ShieldCheck size={17}/><span><b>Your data stays local</b><small>Stored in your browser demo database</small></span></div><div className="user-row"><div className="avatar">NT</div><span><b>Personal workspace</b><small>Local demo</small></span><ChevronDown size={15}/></div></div></aside>;
+export interface SidebarProps {
+  active: string;
+  onSelect: (page: string) => void;
+  open: boolean;
+  onClose: () => void;
+  userName?: string;
+  sessionCount?: number;
+  onSignOut?: () => void;
+}
+
+export default function Sidebar({
+  active,
+  onSelect,
+  open,
+  onClose,
+  userName = 'Alex Morgan',
+  sessionCount = 4,
+  onSignOut,
+}: SidebarProps) {
+  const initials = userName
+    .split(' ')
+    .map((w) => w[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+
+  const handleNav = (page: string) => {
+    onSelect(page);
+    onClose();
+  };
+
+  return (
+    <aside className={`sidebar ${open ? 'sidebar-open open' : ''}`}>
+      <div className="flex items-center justify-between">
+        <button
+          className="brand-lockup cursor-pointer"
+          onClick={() => handleNav('Overview')}
+        >
+          <div className="brand-mark">
+            <Brain size={19} strokeWidth={2.3} />
+          </div>
+          <span>
+            neuro<span>track</span>
+          </span>
+        </button>
+        {open && (
+          <button
+            className="icon-button lg:hidden"
+            onClick={onClose}
+            aria-label="Close navigation"
+          >
+            <X size={18} />
+          </button>
+        )}
+      </div>
+
+      <div className="workspace-label">MY SPACE</div>
+      <nav className="main-nav" aria-label="My Space navigation">
+        <button
+          className={`nav-item ${active === 'Overview' ? 'active' : ''}`}
+          onClick={() => handleNav('Overview')}
+        >
+          <Home size={17} />
+          <span>Overview</span>
+        </button>
+        <button
+          className={`nav-item ${['Testing lab', 'Reaction Test', 'Stroop Task', 'Choice Reaction', 'Go / No-Go', 'Digit Span', 'Corsi Spatial', 'Visual Search', 'Time Perception', 'Trail Making'].includes(active) ? 'active' : ''}`}
+          onClick={() => handleNav('Testing lab')}
+        >
+          <Layers3 size={17} />
+          <span>Cognitive Lab</span>
+          <span className="nav-count">10</span>
+        </button>
+        <button
+          className={`nav-item ${active === 'Focus & Habits' ? 'active' : ''}`}
+          onClick={() => handleNav('Focus & Habits')}
+        >
+          <Timer size={17} />
+          <span>Focus & Habits</span>
+        </button>
+        <button
+          className={`nav-item ${active === 'Context Journal & Check-in' ? 'active' : ''}`}
+          onClick={() => handleNav('Context Journal & Check-in')}
+        >
+          <BookOpen size={17} />
+          <span>Context & Hydration</span>
+        </button>
+        <button
+          className={`nav-item ${active === 'Task Scheduler' ? 'active' : ''}`}
+          onClick={() => handleNav('Task Scheduler')}
+        >
+          <ListTodo size={17} />
+          <span>Task Scheduler</span>
+        </button>
+      </nav>
+
+      <div className="workspace-label second-label">ANALYTICS & SCIENCE</div>
+      <nav className="main-nav" aria-label="Analytics and science navigation">
+        <button
+          className={`nav-item ${active === 'Analytics' ? 'active' : ''}`}
+          onClick={() => handleNav('Analytics')}
+        >
+          <BarChart3 size={17} />
+          <span>Analytics & Trends</span>
+          <span className="nav-dot" />
+        </button>
+        <button
+          className={`nav-item ${active === 'Insights' ? 'active' : ''}`}
+          onClick={() => handleNav('Insights')}
+        >
+          <Sparkles size={17} />
+          <span>Insights Engine</span>
+        </button>
+        <button
+          className={`nav-item ${active === 'NeuroNutri' ? 'active' : ''}`}
+          onClick={() => handleNav('NeuroNutri')}
+        >
+          <Apple size={17} />
+          <span>NeuroNutri Fueling</span>
+        </button>
+        <button
+          className={`nav-item ${active === 'Learn' ? 'active' : ''}`}
+          onClick={() => handleNav('Learn')}
+        >
+          <Network size={17} />
+          <span>Learning Hub</span>
+        </button>
+      </nav>
+
+      <div className="workspace-label second-label">ACCOUNT & DATA</div>
+      <nav className="main-nav" aria-label="Account navigation">
+        <button
+          className={`nav-item ${active === 'Settings' ? 'active' : ''}`}
+          onClick={() => handleNav('Settings')}
+        >
+          <Settings2 size={17} />
+          <span>Profile & Settings</span>
+        </button>
+        <button
+          className={`nav-item ${active === 'Privacy & settings' ? 'active' : ''}`}
+          onClick={() => handleNav('Privacy & settings')}
+        >
+          <ShieldCheck size={17} />
+          <span>Data & Privacy</span>
+        </button>
+        {onSignOut && (
+          <button className="nav-item" onClick={onSignOut}>
+            <LogOut size={17} />
+            <span>Switch / Welcome</span>
+          </button>
+        )}
+      </nav>
+
+      <div className="sidebar-bottom">
+        <div className="mini-progress">
+          <div className="mini-progress-top">
+            <span>Weekly rhythm</span>
+            <span>{Math.min(sessionCount, 5)}/5</span>
+          </div>
+          <div className="progress-track">
+            <span style={{ width: `${Math.min(100, (sessionCount / 5) * 100)}%` }} />
+          </div>
+          <p>
+            {sessionCount >= 5
+              ? 'Goal reached for this week!'
+              : `${5 - Math.min(sessionCount, 4)} more check-in${5 - Math.min(sessionCount, 4) > 1 ? 's' : ''} to keep your rhythm.`}
+          </p>
+        </div>
+
+        <button
+          className="help-link"
+          onClick={() => handleNav('Privacy & settings')}
+        >
+          <CircleHelp size={15} /> Local Demo & Privacy
+        </button>
+
+        <div
+          className="profile-chip"
+          onClick={() => handleNav('Settings')}
+          title="Open settings"
+        >
+          <div className="avatar">{initials}</div>
+          <div>
+            <strong>{userName}</strong>
+            <span>Personal space</span>
+          </div>
+          <MoreHorizontal size={16} className="muted-icon" />
+        </div>
+      </div>
+    </aside>
+  );
 }

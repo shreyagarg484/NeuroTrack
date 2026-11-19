@@ -15,7 +15,7 @@ const dbPath = resolve(process.cwd(), process.env.DATABASE_PATH || './data/neuro
 mkdirSync(dirname(dbPath), { recursive: true });
 const require = createRequire(import.meta.url);
 const wasmDirectory = dirname(require.resolve('sql.js'));
-const SQL = await initSqlJs({ locateFile: (file) => resolve(wasmDirectory, file) });
+const SQL = await initSqlJs({ locateFile: (file) => resolve(wasmDirectory, file), useOldExtensionFunctions: false });
 const db: SqlJsDatabase = new SQL.Database(existsSync(dbPath) ? new Uint8Array(readFileSync(dbPath)) : undefined);
 function persistDb() { writeFileSync(dbPath, Buffer.from(db.export())); }
 function prepare(sql: string) {
