@@ -5,7 +5,7 @@ NeuroTrack is a local-first cognitive self-tracking and neuroscience education d
 ## Architecture
 
 - `client/`: React, TypeScript, Vite, Recharts. Includes the responsive dashboard, N-back task, daily optional check-in, analytics, insight view, learning hub, and privacy/settings UI.
-- `server/`: Express and TypeScript. Validates inputs, persists sessions/check-ins with SQLite, exports/deletes data, and calls the TinyFish Web Agent only from the backend.
+- `server/`: Express and TypeScript. Validates inputs, persists sessions/check-ins with SQLite, exports/deletes data, and calls the TinyFish Web Agent and Google Gemini only from the backend.
 - `server/data/neurotrack.sqlite`: created on first run using SQLite compiled to WebAssembly. First startup includes four explicitly synthetic N-back sessions to make the dashboard demonstrable. The data reset action can clear it; `/api/demo/reset` restores the synthetic records.
 
 No account system or cloud sync is configured. TinyFish receives only a fixed topic/task request; the app never includes personal performance or check-in data in that request.
@@ -46,9 +46,33 @@ Open `http://localhost:5173`. The API runs on `http://localhost:3001`; Vite forw
 4. Restart the API (`Ctrl+C`, then `npm run dev:server`).
 5. Open Testing Lab and select **Explore the science behind this task**. This uses the one predefined topic: **working memory and the N-back task**. A `LIVE TINYFISH` label appears only after a successful response passes validation. Without a key, the app shows the built-in overview.
 
-The Testing Lab shows whether a key is configured, using only a true/false server response. `/api/config` returns `{ "tinyfishConfigured": true|false }`; it never returns the key. The backend explicitly loads `server/.env`, checks it into `.gitignore`, and sends the key only in the server-to-TinyFish `X-API-Key` header. It is not exposed through Vite or sent to the browser. The fixed task/topic request excludes personal session and check-in data.
+The Testing Lab shows whether a key is configured, using only a true/false server response. `/api/config` returns `{ "tinyfishConfigured": true|false, "geminiConfigured": true|false }`; it never returns the key. The backend explicitly loads `server/.env`, checks it into `.gitignore`, and sends the key only in the server-to-TinyFish `X-API-Key` header. It is not exposed through Vite or sent to the browser. The fixed task/topic request excludes personal session and check-in data.
 
 The integration uses `POST https://agent.tinyfish.ai/v1/automation/run`, `X-API-Key`, and a top-level-object `output_schema`. Those request fields and the `COMPLETED` response status match the [official Agent API reference](https://docs.tinyfish.ai/agent-api/reference) and [structured output guide](https://docs.tinyfish.ai/key-concepts/structured-output). Results are validated and source URLs restricted to HTTPS on an approved research/education domain. Missing keys use the built-in overview. Failed runs, unreadable or malformed responses, empty approved-source lists, upstream errors, and timeouts show a concise error plus the built-in overview; they are not presented as live research.
+
+## Enable Gemini AI features
+
+The backend also calls Google Gemini for AI personal insights and learning-hub explainers.
+
+1. In the project folder, make a private server-side environment file (if it does not exist yet):
+
+   ```powershell
+   if (-not (Test-Path server/.env)) { Copy-Item .env.example server/.env }
+   notepad server/.env
+   ```
+
+2. Add a valid Google AI API key as `GEMINI_API_KEY` (and optionally set `GEMINI_MODEL`, which defaults to `gemini-2.0-flash`).
+3. Save and close Notepad, then restart the API (`Ctrl+C`, then `npm run dev:server`).
+
+The key is stored only in `server/.env` and is sent solely from the server process to Google. It is never returned by `/api/config` and never reaches the browser or Vite proxy.
+
+Endpoints added for the AI layer:
+
+- `GET /api/config` → `{ "tinyfishConfigured": true|false, "geminiConfigured": true|false }` (never returns keys).
+- `POST /api/insights` → `{ "mode": "gemini" | "fallback", "insight": { headline, summary, observations, suggestions, caution } }`. Gemini receives the user's own saved sessions, context journal and habit logs; when no key is configured a locally computed fallback insight is returned.
+- `POST /api/learning` → `{ "mode": "gemini" | "fallback", "learning": { title, explanation, processes, evidence, limitations } }`.
+
+AI insights and explainers are generated from the UI (Insights page and Learning & Science Hub). Results are educational only and never make medical or diagnostic claims.
 
 ## Verify
 

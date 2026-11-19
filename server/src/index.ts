@@ -9,6 +9,8 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { isTinyFishConfigured, outputSchema, validateTinyFishPayload } from './tinyfish.js';
+import { isGeminiConfigured, generateGeminiJson, geminiResponseSchemas, insightSchema, learningSchema, recipeSchema, type Insight, type LearningContent, type RecipeSet } from './gemini.js';
+import { taskTopics, learningForTopic, builtinRecipes, bandForScore, localInsight, type PersonalSignals, type SignalSession } from './content.js';
 import { createSessionRepository } from './session-repository.js';
 loadEnv({ path: resolve(dirname(fileURLToPath(import.meta.url)), '../.env') });
 const dbPath = resolve(process.cwd(), process.env.DATABASE_PATH || './data/neurotrack.sqlite');
@@ -62,13 +64,53 @@ if (existingSessions.count === 0) {
   for (const row of samples) insert.run(...row);
 }
 
+const taskLabels: Record<string, string> = {
+  stroop: 'Stroop task', 'choice-reaction': 'Choice reaction task', 'simple-reaction': 'Simple reaction task',
+  'go-no-go': 'Go / No-Go task', 'digit-span': 'Digit Span task', 'corsi-spatial': 'Corsi Spatial task',
+  'visual-search': 'Visual Search task', 'time-perception': 'Time Perception task', 'trail-making': 'Trail Making task'
+};
+
+function collectPersonalSignals(): PersonalSignals {
+  const nback = store.prepare('SELECT createdAt, n, accuracy, medianRt, misses FROM sessions WHERE isSynthetic = 0 ORDER BY createdAt DESC LIMIT 40').all() as Array<{ createdAt: string; n: number; accuracy: number; medianRt: number; misses: number }>;
+  const cognitive = store.prepare('SELECT createdAt, taskType, accuracy, medianRt FROM cognitive_sessions ORDER BY createdAt DESC LIMIT 40').all() as Array<{ createdAt: string; taskType: string; accuracy: number; medianRt: number }>;
+  const suite = store.prepare('SELECT createdAt, taskType, accuracy, medianRt FROM suite_sessions ORDER BY createdAt DESC LIMIT 40').all() as Array<{ createdAt: string; taskType: string; accuracy: number; medianRt: number }>;
+  const sessions: SignalSession[] = [
+    ...nback.map((row) => ({ createdAt: row.createdAt, task: `${row.n}-back`, accuracy: row.accuracy, medianRt: row.medianRt, misses: row.misses })),
+    ...cognitive.map((row) => ({ createdAt: row.createdAt, task: taskLabels[row.taskType] ?? row.taskType, accuracy: row.accuracy, medianRt: row.medianRt })),
+    ...suite.map((row) => ({ createdAt: row.createdAt, task: taskLabels[row.taskType] ?? row.taskType, accuracy: row.accuracy, medianRt: row.medianRt }))
+  ].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const context = store.prepare('SELECT date, sleepDuration, sleepQuality, caffeine, exercise, mood, stress, energy, notes FROM context_entries ORDER BY date DESC, createdAt DESC LIMIT 40').all() as Array<Record<string, unknown>>;
+  const habits = store.prepare('SELECT date, screenTimeMinutes, distractingAppMinutes, focusSessionsStarted, focusSessionsCompleted, phoneEnvironment, studyInterruptCount, notes FROM focus_habit_entries ORDER BY date DESC, createdAt DESC LIMIT 40').all() as Array<Record<string, unknown>>;
+  const checkinRow = store.prepare('SELECT id, createdAt, sleepHours, mood, stress, detailsJson FROM checkins ORDER BY createdAt DESC, id DESC LIMIT 1').get() as { id: number; createdAt: string; sleepHours: number | null; mood: number; stress: number; detailsJson: string } | undefined;
+  let checkin: Record<string, unknown> | null = null;
+  if (checkinRow) {
+    let details: Record<string, unknown> = {};
+    try {
+      const parsed: unknown = JSON.parse(checkinRow.detailsJson);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) details = parsed as Record<string, unknown>;
+    } catch {
+      // Older or malformed optional details should not prevent building a signal summary.
+    }
+    checkin = { id: checkinRow.id, createdAt: checkinRow.createdAt, sleepHours: checkinRow.sleepHours, mood: checkinRow.mood, stress: checkinRow.stress, ...details };
+  }
+  return { sessions, context, habits, checkin };
+}
+
+function parseTinyFishResult<T>(payload: unknown, schema: z.ZodType<T>): { ok: true; value: T } | { ok: false; reason: 'failed' | 'malformed' } {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return { ok: false, reason: 'malformed' };
+  const status = (payload as { status?: unknown }).status;
+  if (status !== 'COMPLETED') return { ok: false, reason: status === 'FAILED' ? 'failed' : 'malformed' };
+  const parsed = schema.safeParse((payload as { result?: unknown }).result);
+  return parsed.success ? { ok: true, value: parsed.data } : { ok: false, reason: 'malformed' };
+}
+
 const app = express();
 app.disable('x-powered-by');
 app.use(cors({ origin: ['http://localhost:5173', 'http://127.0.0.1:5173'] }));
 app.use(express.json({ limit: '20kb' }));
 app.use('/api', rateLimit({ windowMs: 60_000, limit: 60, standardHeaders: 'draft-7', legacyHeaders: false }));
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
-app.get('/api/config', (_req, res) => res.json({ tinyfishConfigured: isTinyFishConfigured(process.env.TINYFISH_API_KEY) }));
+app.get('/api/config', (_req, res) => res.json({ tinyfishConfigured: isTinyFishConfigured(process.env.TINYFISH_API_KEY), geminiConfigured: isGeminiConfigured(process.env.GEMINI_API_KEY) }));
 app.get('/api/checkins/latest', (_req, res) => {
   const row = store.prepare('SELECT id, createdAt, sleepHours, mood, stress, detailsJson FROM checkins ORDER BY createdAt DESC, id DESC LIMIT 1').get() as { id: number; createdAt: string; sleepHours: number | null; mood: number; stress: number; detailsJson: string } | undefined;
   if (!row) return res.json({ checkin: null });
@@ -387,6 +429,110 @@ app.post('/api/research', async (req, res) => {
   }
 });
 
+const insightCache = new Map<string, { expires: number; insight: Insight }>();
+app.post('/api/insights', async (_req, res) => {
+  const signals = collectPersonalSignals();
+  const apiKey = process.env.GEMINI_API_KEY?.trim();
+  if (!isGeminiConfigured(apiKey)) return res.json({ mode: 'fallback', insight: localInsight(signals) });
+  const cacheKey = 'personal-insights';
+  const cached = insightCache.get(cacheKey);
+  if (cached && cached.expires > Date.now()) return res.json({ mode: 'gemini', cached: true, insight: cached.insight });
+  try {
+    const prompt = [
+      'You are an educational self-tracking assistant inside a local demo app called NeuroTrack.',
+      'Analyse the JSON below, which contains only the user\'s own saved cognitive test sessions, optional daily context entries, focus habit logs and the latest check-in.',
+      'Write in plain, supportive language. Report only patterns directly supported by the data. Do not diagnose, do not make medical or biological claims, and do not promise performance effects.',
+      'Suggest small, practical experiments the user could try. Keep every observation factual and comparative.',
+      'Return JSON that matches the requested schema.',
+      '',
+      'USER DATA:',
+      JSON.stringify(signals)
+    ].join('\n');
+    const insight = await generateGeminiJson({ apiKey: apiKey as string, prompt, responseSchema: geminiResponseSchemas.insight, schema: insightSchema, timeoutMs: 45_000 });
+    insightCache.set(cacheKey, { expires: Date.now() + 10 * 60 * 1000, insight });
+    return res.json({ mode: 'gemini', cached: false, insight });
+  } catch (error) {
+    console.error('Gemini insight request failed:', error instanceof Error ? error.message : 'unknown');
+    return res.status(502).json({ error: error instanceof Error ? error.message : 'Could not generate AI insights. Please retry.' });
+  }
+});
+
+const learningCache = new Map<string, { expires: number; learning: LearningContent }>();
+app.post('/api/learning', async (req, res) => {
+  const task = typeof req.body?.task === 'string' ? req.body.task.slice(0, 60) : '';
+  const topicInput = typeof req.body?.topic === 'string' ? req.body.topic.slice(0, 120) : '';
+  const topic = taskTopics[task] ?? (topicInput || 'Working memory and the N-back task');
+  const apiKey = process.env.GEMINI_API_KEY?.trim();
+  if (!isGeminiConfigured(apiKey)) return res.json({ mode: 'fallback', learning: learningForTopic(topic) });
+  const cacheKey = topic.toLowerCase();
+  const cached = learningCache.get(cacheKey);
+  if (cached && cached.expires > Date.now()) return res.json({ mode: 'gemini', cached: true, learning: cached.learning });
+  try {
+    const prompt = [
+      'You are an educational neuroscience writer for a local self-tracking demo called NeuroTrack.',
+      `Write a plain-language, factual explainer about: ${topic}.`,
+      'Describe the cognitive mechanism in everyday language, name the main processes or systems involved, summarise the evidence cautiously, and state the limitations of short browser tasks.',
+      'Do not diagnose, do not make medical claims, and do not promise that any task improves ability.',
+      'Return JSON that matches the requested schema.',
+      '',
+      'REFERENCE OVERVIEW (use as background, do not copy verbatim):',
+      JSON.stringify(learningForTopic(topic))
+    ].join('\n');
+    const learning = await generateGeminiJson({ apiKey: apiKey as string, prompt, responseSchema: geminiResponseSchemas.learning, schema: learningSchema, timeoutMs: 45_000 });
+    learningCache.set(cacheKey, { expires: Date.now() + 60 * 60 * 1000, learning });
+    return res.json({ mode: 'gemini', cached: false, learning });
+  } catch (error) {
+    console.error('Gemini learning request failed:', error instanceof Error ? error.message : 'unknown');
+    return res.status(502).json({ error: error instanceof Error ? error.message : 'Could not generate learning content. Please retry.' });
+  }
+});
+
+const recipeCache = new Map<string, { expires: number; recipes: RecipeSet }>();
+app.post('/api/recipes', async (req, res) => {
+  const score = typeof req.body?.score === 'number' && Number.isFinite(req.body.score) ? Math.max(0, Math.min(100, Math.round(req.body.score))) : null;
+  const requestedBand = typeof req.body?.band === 'string' ? req.body.band.toLowerCase() : '';
+  const band: 'high' | 'moderate' | 'low' = requestedBand === 'high' || requestedBand === 'moderate' || requestedBand === 'low' ? requestedBand : bandForScore(score ?? 88);
+  const apiKey = process.env.TINYFISH_API_KEY?.trim();
+  if (!isTinyFishConfigured(apiKey)) return res.json({ mode: 'fallback', recipes: builtinRecipes[band] });
+  const cacheKey = `recipes-${band}`;
+  const cached = recipeCache.get(cacheKey);
+  if (cached && cached.expires > Date.now()) return res.json({ mode: 'tinyfish', cached: true, recipes: cached.recipes });
+  try {
+    const response = await fetch('https://agent.tinyfish.ai/v1/automation/run', {
+      method: 'POST',
+      headers: { 'X-API-Key': apiKey as string, 'Content-Type': 'application/json' },
+      signal: AbortSignal.timeout(65_000),
+      body: JSON.stringify({
+        url: 'https://www.google.com/search?q=hostel+student+budget+brain+food+snack+recipes+India',
+        goal: `Find affordable, hostel or campus friendly food and snack ideas for a student in the "${band}" focus band. Return three to six practical suggestions with a short category, a name and one or two descriptive sentences. Do not make medical, diagnostic or guaranteed-performance claims. Prefer simple options available in a hostel or campus canteen. Return only the structured JSON.`,
+        output_schema: geminiResponseSchemas.recipe
+      })
+    });
+    if (!response.ok) {
+      console.error('TinyFish recipe request failed with status:', response.status);
+      const advice = response.status === 401 ? 'Check that the API key is valid.' : response.status === 402 ? 'Check your TinyFish wallet balance.' : response.status === 403 ? 'Check TinyFish account access or credits.' : response.status === 429 ? 'TinyFish rate limit reached. Try again later.' : 'Check the TinyFish service and server logs.';
+      return res.status(502).json({ error: `TinyFish recipe request failed (HTTP ${response.status}). ${advice}` });
+    }
+    let payload: unknown;
+    try {
+      payload = await response.json();
+    } catch {
+      return res.status(502).json({ error: 'TinyFish returned an unreadable response. Please retry.' });
+    }
+    const result = parseTinyFishResult(payload, recipeSchema);
+    if (!result.ok) {
+      if (result.reason === 'failed') return res.status(502).json({ error: 'TinyFish could not complete the recipe search. Please retry.' });
+      return res.status(502).json({ error: 'TinyFish returned an unexpected result format. Please retry.' });
+    }
+    recipeCache.set(cacheKey, { expires: Date.now() + 60 * 60 * 1000, recipes: result.value });
+    return res.json({ mode: 'tinyfish', cached: false, recipes: result.value });
+  } catch (error) {
+    const timedOut = error instanceof Error && error.name === 'TimeoutError';
+    console.error('TinyFish recipe request error:', timedOut ? 'timeout' : error instanceof Error ? error.name : 'unknown');
+    return res.status(timedOut ? 504 : 502).json({ error: timedOut ? 'TinyFish recipe search took too long. Please try again.' : 'Could not reach TinyFish. Check your internet connection and retry.' });
+  }
+});
+
 if (process.env.NODE_ENV === 'production') {
   const clientBuildPath = resolve(dirname(fileURLToPath(import.meta.url)), '../../client/dist');
   app.use(express.static(clientBuildPath));
@@ -396,7 +542,7 @@ if (process.env.NODE_ENV === 'production') {
   });
 }
 
-app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => { console.error('Request error:', error instanceof Error ? error.message : 'unknown'); res.status(400).json({ error: 'Invalid request.' }); });
+app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => { console.error('Request error:', error instanceof Error ? `${error.message}\n${error.stack}` : 'unknown'); res.status(400).json({ error: 'Invalid request.' }); });
 const port = Number(process.env.PORT || 3001);
 export const server = app.listen(port, '0.0.0.0', () => console.log(`NeuroTrack API ready on 0.0.0.0:${port}`));
 

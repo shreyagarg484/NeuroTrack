@@ -222,3 +222,23 @@ body, .shell, .main { background: var(--nt-bg); color: var(--nt-text); }
 .analytics-data-note{margin:11px 2px;color:#968ba8;font-size:10px;line-height:1.6}
 @media(max-width:900px){.analytics-chart-grid{grid-template-columns:1fr}.analytics-chart-card .chart{height:250px}}
 @media(max-width:620px){.analytics-chart-card{padding:15px}.analytics-chart-card .chart{height:220px}}
+
+/* Gemini AI insights and learning explainer */
+.ai-insight-panel{margin-top:16px}
+.ai-insight-headline{margin:14px 0 6px;color:#f3eefb;font:650 16px Manrope,sans-serif}
+.ai-insight-summary{margin:0 0 14px;color:#b6aec6;font-size:12px;line-height:1.7}
+.ai-insight-label{display:block;margin:12px 0 6px;color:#c9b8f5;font:700 9px 'DM Mono',monospace;letter-spacing:.08em}
+.learning-ai-panel{margin-top:12px}
+.learning-ai-controls{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin-top:6px}
+.learning-ai-controls label{display:grid;gap:6px;color:#a79dbb;font-size:11px}
+.learning-ai-controls select{min-width:280px;padding:9px 11px;border:1px solid #3a3154;border-radius:8px;background:#12101d;color:#eee8f6;font-size:12px}
+.learning-ai-controls .primary{padding:10px 16px;font-size:12px}
+.learning-ai-result{margin-top:16px;border-top:1px solid #2e2744;padding-top:16px}
+.learning-ai-result h3{margin:0 0 8px;color:#f3eefb;font:650 16px Manrope,sans-serif}
+.learning-ai-result p{margin:8px 0;color:#b6aec6;font-size:12px;line-height:1.7}
+.learning-ai-result b{display:block;margin:14px 0 6px;color:#c9b8f5;font:700 9px 'DM Mono',monospace;letter-spacing:.08em}
+.learning-ai-result .processes{margin:8px 0}
+.learning-ai-limitations{display:flex;align-items:flex-start;gap:7px;color:#9a90ad !important;font-size:11px !important}
+.learning-ai-limitations svg{flex:none;color:#06b6d4;margin-top:1px}
+.learning-ai-error{margin-top:12px;display:flex;align-items:center;gap:8px}
+@media(max-width:620px){.learning-ai-controls{flex-direction:column;align-items:stretch}.learning-ai-controls select{min-width:0;width:100%}.learning-ai-controls .primary{width:100%}}

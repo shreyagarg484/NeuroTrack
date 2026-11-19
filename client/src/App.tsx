@@ -52,6 +52,7 @@ import TaskScheduler from './components/TaskScheduler';
 import ContextJournal from './components/ContextJournal';
 import FocusHabitTracker, { FocusHabitInsights } from './components/FocusHabitTracker';
 import HydrationTracker from './components/HydrationTracker';
+import AIInsights from './components/AIInsights';
 import {
   NBackTask,
   ReactionTest,
@@ -1546,6 +1547,8 @@ export default function App() {
                 </section>
               </div>
 
+              <AIInsights />
+
               <FocusHabitInsights />
 
               <div className="panel experiment-note mt-6 flex items-start gap-3 bg-surface-light border border-line p-4 rounded-lg">
@@ -1743,6 +1746,21 @@ export default function App() {
                     <p>
                       Only a fixed task topic is sent for educational research. Personal results and check-in details are
                       never included.
+                    </p>
+                  </div>
+                  <span className="status-tag">OPT-IN</span>
+                </div>
+
+                <div className="privacy-row">
+                  <span className="privacy-icon">
+                    <Sparkles />
+                  </span>
+                  <div>
+                    <h2>Gemini AI insights &amp; explainers</h2>
+                    <p>
+                      When you generate insights or a learning explainer, your local session, journal and habit
+                      summaries are sent to Google Gemini. Nothing is sent automatically. Add GEMINI_API_KEY to
+                      server/.env to enable it.
                     </p>
                   </div>
                   <span className="status-tag">OPT-IN</span>
