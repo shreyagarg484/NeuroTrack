@@ -19,12 +19,12 @@ export const outputSchema = {
 };
 
 const resultValidator = z.object({
-  topic: z.string().min(2).max(120),
-  explanation: z.string().min(10).max(1200),
-  processes: z.array(z.string().min(2).max(100)).max(8),
-  evidence: z.string().min(10).max(1500),
-  sources: z.array(z.object({ title: z.string().min(2).max(180), url: z.string().url().max(500) })).max(8),
-  limitations: z.string().min(10).max(1000)
+  topic: z.string().min(2).max(200),
+  explanation: z.string().min(10).max(4000),
+  processes: z.array(z.string().min(2).max(200)).max(8),
+  evidence: z.string().min(10).max(4000),
+  sources: z.array(z.object({ title: z.string().min(2).max(180), url: z.string().url().max(500) })).max(10),
+  limitations: z.string().min(10).max(2000)
 });
 
 const trustedDomain = (hostname: string) => hostname === 'doi.org' || hostname === 'nih.gov' || hostname.endsWith('.nih.gov') || hostname.endsWith('.edu') || ['nature.com', 'annualreviews.org', 'sciencedirect.com', 'frontiersin.org', 'sciencemag.org', 'apa.org'].some((domain) => hostname === domain || hostname.endsWith(`.${domain}`));
