@@ -9,7 +9,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { isTinyFishConfigured, outputSchema, validateTinyFishPayload } from './tinyfish.js';
-import { isGeminiConfigured, generateGeminiJson, geminiResponseSchemas, insightSchema, learningSchema, recipeSchema, type Insight, type LearningContent, type RecipeSet } from './gemini.js';
+import { isGeminiConfigured, generateGeminiJson, geminiResponseSchemas, tinyFishRecipeResponseSchema, insightSchema, learningSchema, recipeSchema, type Insight, type LearningContent, type RecipeSet } from './gemini.js';
 import { taskTopics, learningForTopic, builtinRecipes, bandForScore, localInsight, type PersonalSignals, type SignalSession } from './content.js';
 import { createSessionRepository } from './session-repository.js';
 loadEnv({ path: resolve(dirname(fileURLToPath(import.meta.url)), '../.env') });
@@ -505,7 +505,7 @@ app.post('/api/recipes', async (req, res) => {
       body: JSON.stringify({
         url: 'https://www.google.com/search?q=hostel+student+budget+brain+food+snack+recipes+India',
         goal: `Find affordable, hostel or campus friendly food and snack ideas for a student in the "${band}" focus band. Return three to six practical suggestions with a short category, a name and one or two descriptive sentences. Do not make medical, diagnostic or guaranteed-performance claims. Prefer simple options available in a hostel or campus canteen. Return only the structured JSON.`,
-        output_schema: geminiResponseSchemas.recipe
+        output_schema: tinyFishRecipeResponseSchema
       })
     });
     if (!response.ok) {

@@ -7,7 +7,18 @@ export const isGeminiConfigured = (apiKey: string | undefined): boolean => {
   return Boolean(key && !PLACEHOLDER_GEMINI_KEYS.has(key));
 };
 
-export const geminiModel = (): string => process.env.GEMINI_MODEL?.trim() || 'gemini-2.0-flash';
+/** Models tried in order when GEMINI_MODEL is not set. Older models are
+ * retired by Google, so the caller falls through to the next available one. */
+export const DEFAULT_GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-3.8-flash'];
+
+export const geminiModel = (): string => process.env.GEMINI_MODEL?.trim() || DEFAULT_GEMINI_MODELS[0];
+
+export class GeminiModelUnavailableError extends Error {
+  constructor(readonly model: string, readonly status: number) {
+    super(`Gemini model ${model} is unavailable (HTTP ${status}).`);
+    this.name = 'GeminiModelUnavailableError';
+  }
+}
 
 const stringField = (description: string) => ({ type: 'string', description });
 const stringArrayField = (description: string) => ({ type: 'array', description, items: { type: 'string' } });
@@ -99,21 +110,51 @@ export const recipeSchema = z.object({
 export type RecipeItem = z.infer<typeof recipeSchema>['items'][number];
 export type RecipeSet = z.infer<typeof recipeSchema>;
 
+/** TinyFish accepts a plain JSON Schema; descriptions are omitted for compatibility. */
+export const tinyFishRecipeResponseSchema = {
+  type: 'object',
+  properties: {
+    band: { type: 'string' },
+    items: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          category: { type: 'string' },
+          title: { type: 'string' },
+          detail: { type: 'string' },
+          price: { type: 'string' }
+        },
+        required: ['category', 'title', 'detail']
+      }
+    },
+    sources: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: { title: { type: 'string' }, url: { type: 'string' } },
+        required: ['title', 'url']
+      }
+    }
+  },
+  required: ['band', 'items']
+};
+
 const cleanJsonText = (text: string): string => text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
 
 /**
  * Call the Gemini generateContent REST endpoint and validate the JSON response.
  * The API key is sent only to Google; it never leaves the server process.
  */
-export async function generateGeminiJson<T>(options: {
+async function requestGeminiJson<T>(options: {
   apiKey: string;
   prompt: string;
   responseSchema: object;
   schema: z.ZodType<T>;
-  model?: string;
+  model: string;
   timeoutMs?: number;
 }): Promise<T> {
-  const model = options.model ?? geminiModel();
+  const model = options.model;
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(options.apiKey)}`;
 
   let response: Response;
@@ -143,6 +184,7 @@ export async function generateGeminiJson<T>(options: {
     } catch {
       // Ignore an unreadable error body.
     }
+    if (response.status === 404) throw new GeminiModelUnavailableError(model, response.status);
     const advice = response.status === 400
       ? 'Check the GEMINI_API_KEY and GEMINI_MODEL values.'
       : response.status === 401 || response.status === 403
@@ -174,4 +216,33 @@ export async function generateGeminiJson<T>(options: {
   const result = options.schema.safeParse(parsed);
   if (!result.success) throw new Error('Gemini returned an unexpected result format. Please retry.');
   return result.data;
+}
+
+/**
+ * Call Gemini and validate the JSON response. If the preferred model has been
+ * retired (HTTP 404), automatically retry with the next model in
+ * DEFAULT_GEMINI_MODELS so the app keeps working across Google model rotations.
+ */
+export async function generateGeminiJson<T>(options: {
+  apiKey: string;
+  prompt: string;
+  responseSchema: object;
+  schema: z.ZodType<T>;
+  model?: string;
+  timeoutMs?: number;
+}): Promise<T> {
+  const preferred = options.model ?? geminiModel();
+  const candidates = options.model
+    ? [preferred]
+    : [preferred, ...DEFAULT_GEMINI_MODELS.filter((model) => model !== preferred)];
+  let lastError: unknown = new Error(`No Gemini model is available (${preferred}).`);
+  for (const model of candidates) {
+    try {
+      return await requestGeminiJson<T>({ ...options, model });
+    } catch (error) {
+      lastError = error;
+      if (!(error instanceof GeminiModelUnavailableError)) throw error;
+    }
+  }
+  throw lastError;
 }
