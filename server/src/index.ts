@@ -419,7 +419,8 @@ app.post('/api/research', async (req, res) => {
       const failure = (payload as { result?: unknown } | null)?.result;
       if (result.reason === 'failed') {
         console.error('TinyFish research run failed. TinyFish response payload:', JSON.stringify(payload).slice(0, 3000));
-        return res.status(502).json({ error: 'TinyFish could not complete the research run. Please retry.', detail: failure });
+        const failure = (payload as { result?: unknown } | null)?.result;
+        return res.status(502).json({ error: 'TinyFish could not complete the research run. Please retry.', detail: failure, payload: JSON.stringify(payload).slice(0, 3000) });
       }
       if (result.reason === 'empty') return res.status(502).json({ error: 'TinyFish completed without usable research sources. Please retry later.', detail: failure });
       return res.status(502).json({ error: 'TinyFish returned an unexpected result format. Please retry.', detail: failure });
