@@ -506,7 +506,7 @@ app.post('/api/recipes', async (req, res) => {
     const response = await fetch('https://agent.tinyfish.ai/v1/automation/run', {
       method: 'POST',
       headers: { 'X-API-Key': apiKey as string, 'Content-Type': 'application/json' },
-      signal: AbortSignal.timeout(65_000),
+      signal: AbortSignal.timeout(150_000),
       body: JSON.stringify({
         url: 'https://www.google.com/search?q=hostel+student+budget+brain+food+snack+recipes+India',
         goal: `Find affordable, hostel or campus friendly food and snack ideas for a student in the "${band}" focus band. Return three to six practical suggestions with a short category, a name and one or two descriptive sentences. Do not make medical, diagnostic or guaranteed-performance claims. Prefer simple options available in a hostel or campus canteen. Return only the structured JSON.`,
