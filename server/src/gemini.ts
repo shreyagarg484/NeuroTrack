@@ -20,6 +20,13 @@ export class GeminiModelUnavailableError extends Error {
   }
 }
 
+export class GeminiApiError extends Error {
+  constructor(readonly status: number, message: string) {
+    super(message);
+    this.name = 'GeminiApiError';
+  }
+}
+
 const stringField = (description: string) => ({ type: 'string', description });
 const stringArrayField = (description: string) => ({ type: 'array', description, items: { type: 'string' } });
 
@@ -192,7 +199,7 @@ async function requestGeminiJson<T>(options: {
         : response.status === 429
           ? 'Gemini rate limit reached. Try again later.'
           : 'Check the Gemini service and server logs.';
-    throw new Error(`Gemini request failed (HTTP ${response.status}). ${advice}${detail ? ` ${detail}` : ''}`);
+    throw new GeminiApiError(response.status, `Gemini request failed (HTTP ${response.status}). ${advice}${detail ? ` ${detail}` : ''}`);
   }
 
   let payload: unknown;
@@ -222,6 +229,8 @@ async function requestGeminiJson<T>(options: {
  * Call Gemini and validate the JSON response. If the preferred model has been
  * retired (HTTP 404), automatically retry with the next model in
  * DEFAULT_GEMINI_MODELS so the app keeps working across Google model rotations.
+ * Transient server errors (5xx, e.g. the "high demand" 503) are retried with a
+ * short backoff before giving up.
  */
 export async function generateGeminiJson<T>(options: {
   apiKey: string;
@@ -236,12 +245,22 @@ export async function generateGeminiJson<T>(options: {
     ? [preferred]
     : [preferred, ...DEFAULT_GEMINI_MODELS.filter((model) => model !== preferred)];
   let lastError: unknown = new Error(`No Gemini model is available (${preferred}).`);
+  const TRANSIENT_STATUSES = new Set([500, 502, 503, 504]);
   for (const model of candidates) {
-    try {
-      return await requestGeminiJson<T>({ ...options, model });
-    } catch (error) {
-      lastError = error;
-      if (!(error instanceof GeminiModelUnavailableError)) throw error;
+    let attempts = 0;
+    for (;;) {
+      try {
+        return await requestGeminiJson<T>({ ...options, model });
+      } catch (error) {
+        lastError = error;
+        if (error instanceof GeminiModelUnavailableError) break; // retired -> try next model
+        if (error instanceof GeminiApiError && TRANSIENT_STATUSES.has(error.status) && attempts < 2) {
+          attempts += 1; // transient (e.g. 503 high demand) -> back off and retry same model
+          await new Promise((resolve) => setTimeout(resolve, 3_000));
+          continue;
+        }
+        throw error;
+      }
     }
   }
   throw lastError;
