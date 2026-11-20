@@ -421,7 +421,7 @@ export default function App() {
       const data = await apiRequest<{ research?: Research; mode?: string }>('/api/research', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        signal: AbortSignal.timeout(70_000),
+        signal: AbortSignal.timeout(150_000),
         body: JSON.stringify({ task: 'nback', topic: 'working memory' }),
       });
       if (!data.research || !Array.isArray(data.research.sources) || data.research.sources.length === 0)
