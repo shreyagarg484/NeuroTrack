@@ -3793,17 +3793,39 @@ input, select, textarea {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 3px 0;
-  transition: opacity 0.15s ease;
+  padding: 4px 6px;
+  border-radius: 6px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  user-select: none;
+}
+.pie-legend-item:hover,
+.pie-legend-item.highlighted {
+  background: rgba(100, 23, 47, 0.08);
+  transform: translateX(3px);
+}
+.pie-legend-item.highlighted .pie-legend-dot {
+  transform: scale(1.35);
+  box-shadow: 0 0 6px rgba(100, 23, 47, 0.35);
+}
+.pie-legend-item.highlighted .pie-legend-name {
+  color: var(--burgundy-deep);
+  font-weight: 700;
 }
 .pie-legend-item.no-data {
-  opacity: 0.5;
+  opacity: 0.45;
+  cursor: default;
+}
+.pie-legend-item.no-data:hover {
+  background: transparent;
+  transform: none;
 }
 .pie-legend-dot {
   width: 9px;
   height: 9px;
   border-radius: 50%;
   flex-shrink: 0;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 .pie-legend-name {
   color: #4A3B32;
