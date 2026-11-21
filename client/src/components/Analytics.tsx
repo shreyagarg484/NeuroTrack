@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { BarChart3, Filter, RefreshCw } from 'lucide-react';
-import { CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Sector, Tooltip, XAxis, YAxis } from 'recharts';
 import { apiRequest } from '../services/api';
 
 type Trial = { trialType?: string; correct?: boolean; responseMs?: number | null };
@@ -121,17 +121,17 @@ function getChartPlans(rows: Session[], task: TaskFilter): ChartPlan[] {
 }
 
 const PIE_COLORS: Record<TaskFilter, string> = {
-  all: '#64172F',
-  'n-back': '#64172F',           // Burgundy
-  'simple-reaction': '#501225',  // Deep wine
-  'choice-reaction': '#47745E',  // Sage
-  stroop: '#A65D76',             // Dusty rose
-  'go-no-go': '#B77B55',         // Terracotta
-  'digit-span': '#C18B13',       // Muted mustard
-  'corsi-spatial': '#536B80',    // Slate blue
-  'visual-search': '#397C78',    // Teal
-  'time-perception': '#91647D',  // Mauve
-  'trail-making': '#805348',     // Cocoa
+  all: '#C58A9B',
+  'n-back': '#C58A9B',           // Soft Burgundy Rose
+  'simple-reaction': '#A9BDAA',  // Sage Green
+  'choice-reaction': '#DCC4A8',  // Champagne
+  stroop: '#C2AEC9',             // Muted Lavender
+  'go-no-go': '#D9AD91',         // Soft Terracotta
+  'digit-span': '#A5C5C0',       // Muted Teal
+  'corsi-spatial': '#D9A6B2',    // Dusty Rose
+  'visual-search': '#AFC2D2',    // Powder Blue
+  'time-perception': '#B99AAA',  // Soft Mauve
+  'trail-making': '#C5C9A5',     // Pale Olive
 };
 
 const allCognitiveTests: TaskFilter[] = [
@@ -182,8 +182,35 @@ function PieChartCard({
   dataKey: 'accuracy' | 'rt';
   unit: string;
 }) {
+  const [activeIndex, setActiveIndex] = useState<number>(-1);
   const activeSlices = data.filter((d) => d.hasData && d[dataKey] > 0);
   const totalValue = activeSlices.reduce((sum, d) => sum + d[dataKey], 0);
+
+  const activeTask = activeIndex >= 0 && activeSlices[activeIndex] ? activeSlices[activeIndex].id : null;
+
+  const renderActiveShape = (props: any) => {
+    const { cx = 0, cy = 0, innerRadius = 0, outerRadius = 90, startAngle = 0, endAngle = 0, fill = '#C58A9B' } = props;
+    return (
+      <g>
+        <Sector
+          cx={cx}
+          cy={cy}
+          innerRadius={innerRadius}
+          outerRadius={outerRadius + 8}
+          startAngle={startAngle}
+          endAngle={endAngle}
+          fill={fill}
+          stroke="#FFF9F2"
+          strokeWidth={2.5}
+          style={{
+            filter: 'drop-shadow(0px 4px 10px rgba(80, 18, 37, 0.28)) brightness(1.05)',
+            transition: 'all 250ms cubic-bezier(0.4, 0, 0.2, 1)',
+            cursor: 'pointer',
+          }}
+        />
+      </g>
+    );
+  };
 
   return (
     <div className="panel analytics-chart-card analytics-pie-card">
@@ -198,14 +225,18 @@ function PieChartCard({
           <ResponsiveContainer width="100%" height={260}>
             <PieChart>
               <Pie
+                activeIndex={activeIndex >= 0 ? activeIndex : undefined}
+                activeShape={renderActiveShape}
                 data={activeSlices}
                 dataKey={dataKey}
                 nameKey="name"
                 cx="50%"
                 cy="50%"
-                outerRadius={95}
-                stroke="#F6F0E7"
+                outerRadius={90}
+                stroke="#FFF9F2"
                 strokeWidth={2}
+                onMouseEnter={(_, index) => setActiveIndex(index)}
+                onMouseLeave={() => setActiveIndex(-1)}
               >
                 {activeSlices.map((entry) => (
                   <Cell key={entry.id} fill={entry.color} />
@@ -247,15 +278,28 @@ function PieChartCard({
         )}
       </div>
       <div className="analytics-pie-legend">
-        {data.map((item) => (
-          <div key={item.id} className={`pie-legend-item ${item.hasData ? '' : 'no-data'}`}>
-            <span className="pie-legend-dot" style={{ background: item.color }} />
-            <span className="pie-legend-name">{item.name}</span>
-            <span className="pie-legend-value">
-              {item.hasData ? `${(dataKey === 'accuracy' ? item.accuracy : item.rt).toLocaleString()}${unit}` : '—'}
-            </span>
-          </div>
-        ))}
+        {data.map((item) => {
+          const isHighlighted = activeTask === item.id;
+          return (
+            <div
+              key={item.id}
+              className={`pie-legend-item ${item.hasData ? '' : 'no-data'} ${isHighlighted ? 'highlighted' : ''}`}
+              onMouseEnter={() => {
+                if (item.hasData) {
+                  const idx = activeSlices.findIndex((s) => s.id === item.id);
+                  if (idx !== -1) setActiveIndex(idx);
+                }
+              }}
+              onMouseLeave={() => setActiveIndex(-1)}
+            >
+              <span className="pie-legend-dot" style={{ background: item.color }} />
+              <span className="pie-legend-name">{item.name}</span>
+              <span className="pie-legend-value">
+                {item.hasData ? `${(dataKey === 'accuracy' ? item.accuracy : item.rt).toLocaleString()}${unit}` : '—'}
+              </span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
