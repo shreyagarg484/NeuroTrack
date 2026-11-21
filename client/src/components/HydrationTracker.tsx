@@ -10,7 +10,6 @@ export default function HydrationTracker({ value, onChange }: Props) {
   const [internalWater, setInternalWater] = useState(1.5), [waterGoal] = useState(3.0), [saving, setSaving] = useState(false), [toast, setToast] = useState(false), [message, setMessage] = useState('');
   const toastTimer = useRef<number | undefined>(undefined);
   const reminderTimer = useRef<number | undefined>(undefined);
-  const remindButtonRef = useRef<HTMLButtonElement>(null);
   const waterCurrent = value ?? internalWater;
 
   useEffect(() => {
@@ -24,10 +23,12 @@ export default function HydrationTracker({ value, onChange }: Props) {
     return () => { active = false; window.clearTimeout(toastTimer.current); window.clearTimeout(reminderTimer.current); };
   }, []);
 
+  // Document-level listener so the reminder fires reliably, regardless of React's delegated onClick.
   useEffect(() => {
-    const button = remindButtonRef.current;
-    if (!button) return;
-    const handler = () => {
+    const handler = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      const button = target?.closest('.hydration-remind');
+      if (!button) return;
       setToast(true);
       window.clearTimeout(toastTimer.current);
       toastTimer.current = window.setTimeout(() => setToast(false), 6000);
@@ -38,8 +39,8 @@ export default function HydrationTracker({ value, onChange }: Props) {
         toastTimer.current = window.setTimeout(() => setToast(false), 6000);
       }, REMINDER_INTERVAL_MS);
     };
-    button.addEventListener('click', handler);
-    return () => button.removeEventListener('click', handler);
+    document.addEventListener('click', handler, true);
+    return () => document.removeEventListener('click', handler, true);
   }, []);
 
   function scheduleHydrationReminder() {
@@ -64,11 +65,18 @@ export default function HydrationTracker({ value, onChange }: Props) {
     } finally { setSaving(false); }
   }
 
+  function triggerHydrationReminder() {
+    setToast(true);
+    window.clearTimeout(toastTimer.current);
+    toastTimer.current = window.setTimeout(() => setToast(false), 6000);
+    scheduleHydrationReminder();
+  }
+
   const progress = Math.max(0, Math.min(100, waterGoal > 0 ? waterCurrent / waterGoal * 100 : 0));
   return <section className="panel hydration-tracker" aria-labelledby="hydration-title">
     <div className="hydration-heading"><div><span className="hydration-eyebrow"><Droplets size={14}/> DAILY WELLBEING</span><h2 id="hydration-title">💧 Hydration Tracker</h2></div><strong className="hydration-total">{waterCurrent.toFixed(2)} L / {waterGoal.toFixed(2)} L</strong></div>
     <div className="hydration-progress" role="progressbar" aria-label="Water intake progress" aria-valuemin={0} aria-valuemax={waterGoal} aria-valuenow={waterCurrent}><div className="hydration-progress-fill" style={{ width: `${progress}%` }}/></div>
-    <div className="hydration-actions"><button className="hydration-add highlighted" type="button" onClick={() => void addWater(0.25)} disabled={saving || waterCurrent >= waterGoal}><span>＋250ml Glass</span></button><button className="hydration-add" type="button" onClick={() => void addWater(0.5)} disabled={saving || waterCurrent >= waterGoal}><span>＋500ml</span></button><button className="hydration-add" type="button" onClick={() => void addWater(1)} disabled={saving || waterCurrent >= waterGoal}><span>＋1 Liter</span></button><button ref={remindButtonRef} className="hydration-remind" type="button"><Bell size={14}/> Remind me</button></div>
+    <div className="hydration-actions"><button className="hydration-add highlighted" type="button" onClick={() => void addWater(0.25)} disabled={saving || waterCurrent >= waterGoal}><span>＋250ml Glass</span></button><button className="hydration-add" type="button" onClick={() => void addWater(0.5)} disabled={saving || waterCurrent >= waterGoal}><span>＋500ml</span></button><button className="hydration-add" type="button" onClick={() => void addWater(1)} disabled={saving || waterCurrent >= waterGoal}><span>＋1 Liter</span></button><button className="hydration-remind" type="button" onClick={triggerHydrationReminder}><Bell size={14}/> Remind me</button></div>
     <div className="hydration-footer"><span>{saving ? 'Saving intake…' : message || 'Water intake is recorded with your daily context.'}</span>{!saving && message.startsWith('Saved') && <Check size={13}/>}</div>
     {toast && <div id="toast-notification" role="status">💧 Hydration Reminder: Drink 250ml of water to maintain peak focus!</div>}
   </section>;
