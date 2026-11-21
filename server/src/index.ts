@@ -5,7 +5,6 @@ import rateLimit from 'express-rate-limit';
 import initSqlJs, { type Database as SqlJsDatabase, type SqlValue } from 'sql.js';
 import { z } from 'zod';
 import { resolve, dirname } from 'node:path';
-import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
@@ -173,6 +172,26 @@ app.delete('/api/context/:id', (req, res) => {
   const result = store.prepare('DELETE FROM context_entries WHERE id = ?').run(id);
   if (!result.changes) return res.status(404).json({ error: 'Context entry not found.' });
   return res.json({ deleted: true });
+});
+
+const hydrationSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine((value) => { const parsed = new Date(`${value}T00:00:00.000Z`); return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value; }, 'Enter a valid calendar date.'),
+  waterIntakeLiters: z.number().min(0).max(20)
+});
+app.get('/api/hydration', (req, res) => {
+  const date = typeof req.query.date === 'string' ? req.query.date : '';
+  const parsed = hydrationSchema.shape.date.safeParse(date);
+  if (!parsed.success) return res.status(400).json({ error: 'Provide a valid YYYY-MM-DD date.' });
+  const row = store.prepare('SELECT date, waterIntakeLiters, updatedAt FROM hydration_entries WHERE date = ?').get(date);
+  return res.json(row || { date, waterIntakeLiters: 1.5, updatedAt: null });
+});
+app.post('/api/hydration', (req, res) => {
+  const parsed = hydrationSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'Invalid hydration entry', details: parsed.error.flatten() });
+  const { date, waterIntakeLiters } = parsed.data;
+  const updatedAt = new Date().toISOString();
+  store.prepare('INSERT INTO hydration_entries (date, waterIntakeLiters, updatedAt) VALUES (?, ?, ?) ON CONFLICT(date) DO UPDATE SET waterIntakeLiters = excluded.waterIntakeLiters, updatedAt = excluded.updatedAt').run(date, waterIntakeLiters, updatedAt);
+  return res.json({ date, waterIntakeLiters, updatedAt, saved: true });
 });
 
 const habitEntrySchema = z.object({
@@ -416,18 +435,14 @@ app.post('/api/research', async (req, res) => {
 });
 
 const insightCache = new Map<string, { expires: number; insight: Insight }>();
-const insightInFlight = new Map<string, Promise<Insight>>();
-
-const insightCacheKey = (signals: PersonalSignals) => `personal-insights:${createHash('sha256').update(JSON.stringify(signals)).digest('hex').slice(0, 32)}`;
-
-/** Single-flight generation: concurrent requests for the same signals share one Gemini call. */
-const generateInsight = async (signals: PersonalSignals, apiKey: string): Promise<{ insight: Insight; cached: boolean }> => {
-  const cacheKey = insightCacheKey(signals);
+app.post('/api/insights', async (_req, res) => {
+  const signals = collectPersonalSignals();
+  const apiKey = process.env.GEMINI_API_KEY?.trim();
+  if (!isGeminiConfigured(apiKey)) return res.json({ mode: 'fallback', insight: localInsight(signals) });
+  const cacheKey = 'personal-insights';
   const cached = insightCache.get(cacheKey);
-  if (cached && cached.expires > Date.now()) return { insight: cached.insight, cached: true };
-  const inFlight = insightInFlight.get(cacheKey);
-  if (inFlight) return inFlight.then((insight) => ({ insight, cached: false }));
-  const promise = (async () => {
+  if (cached && cached.expires > Date.now()) return res.json({ mode: 'gemini', cached: true, insight: cached.insight });
+  try {
     const prompt = [
       'You are an educational self-tracking assistant inside a local demo app called NeuroTrack.',
       'Analyse the JSON below, which contains only the user\'s own saved cognitive test sessions, optional daily context entries, focus habit logs and the latest check-in.',
@@ -438,26 +453,9 @@ const generateInsight = async (signals: PersonalSignals, apiKey: string): Promis
       'USER DATA:',
       JSON.stringify(signals)
     ].join('\n');
-    const insight = await generateGeminiJson({ apiKey, prompt, responseSchema: geminiResponseSchemas.insight, schema: insightSchema, timeoutMs: 45_000 });
+    const insight = await generateGeminiJson({ apiKey: apiKey as string, prompt, responseSchema: geminiResponseSchemas.insight, schema: insightSchema, timeoutMs: 45_000 });
     insightCache.set(cacheKey, { expires: Date.now() + 10 * 60 * 1000, insight });
-    return insight;
-  })();
-  insightInFlight.set(cacheKey, promise);
-  try {
-    const insight = await promise;
-    return { insight, cached: false };
-  } finally {
-    insightInFlight.delete(cacheKey);
-  }
-};
-
-app.post('/api/insights', async (_req, res) => {
-  const signals = collectPersonalSignals();
-  const apiKey = process.env.GEMINI_API_KEY?.trim();
-  if (!isGeminiConfigured(apiKey)) return res.json({ mode: 'fallback', insight: localInsight(signals) });
-  try {
-    const { insight, cached } = await generateInsight(signals, apiKey as string);
-    return res.json({ mode: 'gemini', cached, insight });
+    return res.json({ mode: 'gemini', cached: false, insight });
   } catch (error) {
     console.error('Gemini insight request failed:', error instanceof Error ? error.message : 'unknown');
     return res.status(502).json({ error: error instanceof Error ? error.message : 'Could not generate AI insights. Please retry.' });
@@ -465,18 +463,16 @@ app.post('/api/insights', async (_req, res) => {
 });
 
 const learningCache = new Map<string, { expires: number; learning: LearningContent }>();
-const learningInFlight = new Map<string, Promise<LearningContent>>();
-
-const learningCacheKey = (topic: string) => `learning:${topic.trim().toLowerCase()}`;
-
-/** Single-flight generation: concurrent requests for the same topic share one Gemini call. */
-const generateLearning = async (topic: string, apiKey: string): Promise<{ learning: LearningContent; cached: boolean }> => {
-  const cacheKey = learningCacheKey(topic);
+app.post('/api/learning', async (req, res) => {
+  const task = typeof req.body?.task === 'string' ? req.body.task.slice(0, 60) : '';
+  const topicInput = typeof req.body?.topic === 'string' ? req.body.topic.slice(0, 120) : '';
+  const topic = taskTopics[task] ?? (topicInput || 'Working memory and the N-back task');
+  const apiKey = process.env.GEMINI_API_KEY?.trim();
+  if (!isGeminiConfigured(apiKey)) return res.json({ mode: 'fallback', learning: learningForTopic(topic) });
+  const cacheKey = topic.toLowerCase();
   const cached = learningCache.get(cacheKey);
-  if (cached && cached.expires > Date.now()) return { learning: cached.learning, cached: true };
-  const inFlight = learningInFlight.get(cacheKey);
-  if (inFlight) return inFlight.then((learning) => ({ learning, cached: false }));
-  const promise = (async () => {
+  if (cached && cached.expires > Date.now()) return res.json({ mode: 'gemini', cached: true, learning: cached.learning });
+  try {
     const prompt = [
       'You are an educational neuroscience writer for a local self-tracking demo called NeuroTrack.',
       `Write a plain-language, factual explainer about: ${topic}.`,
@@ -487,28 +483,9 @@ const generateLearning = async (topic: string, apiKey: string): Promise<{ learni
       'REFERENCE OVERVIEW (use as background, do not copy verbatim):',
       JSON.stringify(learningForTopic(topic))
     ].join('\n');
-    const learning = await generateGeminiJson({ apiKey, prompt, responseSchema: geminiResponseSchemas.learning, schema: learningSchema, timeoutMs: 45_000 });
+    const learning = await generateGeminiJson({ apiKey: apiKey as string, prompt, responseSchema: geminiResponseSchemas.learning, schema: learningSchema, timeoutMs: 45_000 });
     learningCache.set(cacheKey, { expires: Date.now() + 60 * 60 * 1000, learning });
-    return learning;
-  })();
-  learningInFlight.set(cacheKey, promise);
-  try {
-    const learning = await promise;
-    return { learning, cached: false };
-  } finally {
-    learningInFlight.delete(cacheKey);
-  }
-};
-
-app.post('/api/learning', async (req, res) => {
-  const task = typeof req.body?.task === 'string' ? req.body.task.slice(0, 60) : '';
-  const topicInput = typeof req.body?.topic === 'string' ? req.body.topic.slice(0, 120) : '';
-  const topic = taskTopics[task] ?? (topicInput || 'Working memory and the N-back task');
-  const apiKey = process.env.GEMINI_API_KEY?.trim();
-  if (!isGeminiConfigured(apiKey)) return res.json({ mode: 'fallback', learning: learningForTopic(topic) });
-  try {
-    const { learning, cached } = await generateLearning(topic, apiKey as string);
-    return res.json({ mode: 'gemini', cached, learning });
+    return res.json({ mode: 'gemini', cached: false, learning });
   } catch (error) {
     console.error('Gemini learning request failed:', error instanceof Error ? error.message : 'unknown');
     return res.status(502).json({ error: error instanceof Error ? error.message : 'Could not generate learning content. Please retry.' });

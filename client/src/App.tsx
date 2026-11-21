@@ -955,9 +955,10 @@ export default function App() {
                   className="primary-button"
                   onClick={() => {
                     document.getElementById('nback-task')?.scrollIntoView({ behavior: 'smooth' });
+                    if (!running) begin();
                   }}
                 >
-                  Go to task <ArrowRight size={16} />
+                  Begin check-in <ArrowRight size={16} />
                 </button>
               </section>
 
@@ -1643,7 +1644,7 @@ export default function App() {
                     <div className="toggle-row">
                       <div>
                         <strong>Daily check-in reminder</strong>
-                        <span>Interval-based · nudges after each recorded drink (every 2 hours)</span>
+                        <span>Every day at 9:00 AM</span>
                       </div>
                       <button
                         className={`toggle ${notifications ? 'checked' : ''}`}
