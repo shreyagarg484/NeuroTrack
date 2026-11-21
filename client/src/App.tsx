@@ -35,7 +35,7 @@ import {
   X,
   Zap,
 } from 'lucide-react';
-import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Area, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 import Sidebar from './components/Sidebar';
 import MetricCard from './components/ui/MetricCard';
@@ -232,18 +232,70 @@ export default function App() {
   const actualSessions = useMemo(() => sessions.filter((session) => !Boolean(session.isSynthetic)), [sessions]);
   const nbackSessions = useMemo(() => sessions.filter((session) => !session.taskType), [sessions]);
   const latest = nbackSessions[0] || sessions[0];
-  const trend = useMemo(
-    () =>
-      nbackSessions
-        .slice(0, 8)
-        .reverse()
-        .map((s) => ({
-          day: new Date(s.createdAt).toLocaleDateString(undefined, { weekday: 'short' }),
-          accuracy: s.accuracy,
-          rt: s.medianRt,
-        })),
-    [nbackSessions]
-  );
+  const [overviewRange, setOverviewRange] = useState<'weekly' | 'monthly'>('weekly');
+
+  const personalAverage = useMemo(() => {
+    if (!actualSessions.length) return 0;
+    const sum = actualSessions.reduce((acc, s) => acc + (s.accuracy || 0), 0);
+    return Math.round(sum / actualSessions.length);
+  }, [actualSessions]);
+
+  const overviewTrend = useMemo(() => {
+    if (!actualSessions.length) return [];
+    const sorted = [...actualSessions].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    const cutoff = overviewRange === 'weekly' ? Date.now() - 7 * 86_400_000 : Date.now() - 30 * 86_400_000;
+    let inRange = sorted.filter((s) => {
+      const t = Date.parse(s.createdAt);
+      return !Number.isNaN(t) && t >= cutoff;
+    });
+
+    if (inRange.length === 0) {
+      inRange = sorted.slice(-(overviewRange === 'weekly' ? 7 : 30));
+    }
+
+    const taskNames: Record<string, string> = {
+      'simple-reaction': 'Reaction Time',
+      'choice-reaction': 'Choice Reaction',
+      stroop: 'Stroop Task',
+      'go-no-go': 'Go / No-Go',
+      'digit-span': 'Digit Span',
+      'corsi-spatial': 'Corsi Spatial',
+      'visual-search': 'Visual Search',
+      'time-perception': 'Time Perception',
+      'trail-making': 'Trail Making',
+    };
+
+    return inRange.map((s) => {
+      const d = new Date(s.createdAt);
+      const dayLabel = Number.isNaN(d.getTime())
+        ? s.createdAt.slice(5, 10)
+        : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      const fullDate = Number.isNaN(d.getTime())
+        ? s.createdAt
+        : d.toLocaleDateString(undefined, {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+          });
+
+      return {
+        id: s.id,
+        day: dayLabel,
+        fullDate,
+        accuracy: Math.round(s.accuracy),
+        medianRt: s.medianRt,
+        personalAverage,
+        task: s.taskType ? taskNames[s.taskType] || s.taskType : 'N-back',
+      };
+    });
+  }, [actualSessions, overviewRange, personalAverage]);
+
+  const trendImprovement = useMemo(() => {
+    if (overviewTrend.length < 2) return null;
+    return overviewTrend[overviewTrend.length - 1].accuracy - overviewTrend[0].accuracy;
+  }, [overviewTrend]);
 
   const percent = results.length ? Math.round((results.filter((x) => x.correct).length / results.length) * 100) : 0;
   const progressPct = practiceMode
@@ -703,101 +755,148 @@ export default function App() {
                       <span className="panel-kicker">PERFORMANCE</span>
                       <h3>Focus over time</h3>
                     </div>
-                    <button
-                      className="quiet-button"
-                      onClick={() => setPage('Analytics')}
-                    >
-                      Weekly <ChevronDown size={14} />
-                    </button>
+                    <div className="trend-range-selector">
+                      <button
+                        type="button"
+                        className={`range-pill ${overviewRange === 'weekly' ? 'active' : ''}`}
+                        onClick={() => setOverviewRange('weekly')}
+                      >
+                        Weekly
+                      </button>
+                      <button
+                        type="button"
+                        className={`range-pill ${overviewRange === 'monthly' ? 'active' : ''}`}
+                        onClick={() => setOverviewRange('monthly')}
+                      >
+                        Monthly
+                      </button>
+                    </div>
                   </div>
+
                   <div className="chart-legend">
                     <span>
                       <i className="legend-dot burgundy-dot" /> Your score
                     </span>
                     <span>
-                      <i className="legend-dot cream-dot" /> Personal average
+                      <i className="legend-dash sage-dash" /> Personal average {personalAverage > 0 ? `(${personalAverage}%)` : ''}
                     </span>
                   </div>
 
-                  {trend.length > 0 ? (
-                    <div style={{ width: '100%', height: 180 }}>
+                  {overviewTrend.length > 0 ? (
+                    <div style={{ width: '100%', height: 210 }}>
                       <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={trend}>
-                          <CartesianGrid stroke="#e0d2c3" strokeDasharray="3 3" vertical={false} />
+                        <ComposedChart data={overviewTrend} margin={{ top: 12, right: 14, bottom: 4, left: -14 }}>
+                          <defs>
+                            <linearGradient id="focusBurgundyFill" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="#64172F" stopOpacity={0.28} />
+                              <stop offset="85%" stopColor="#64172F" stopOpacity={0.03} />
+                              <stop offset="100%" stopColor="#64172F" stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid stroke="#efe4d5" strokeDasharray="3 3" vertical={false} />
                           <XAxis
                             dataKey="day"
-                            axisLine={false}
+                            axisLine={{ stroke: '#ded1c2' }}
                             tickLine={false}
-                            tick={{ fill: '#887b70', fontSize: 11 }}
+                            tick={{ fill: '#805348', fontSize: 11 }}
                           />
                           <YAxis
                             domain={[0, 100]}
+                            ticks={[0, 25, 50, 75, 100]}
                             axisLine={false}
                             tickLine={false}
-                            tick={{ fill: '#887b70', fontSize: 11 }}
+                            tick={{ fill: '#805348', fontSize: 11 }}
+                            tickFormatter={(v: number) => `${v}%`}
+                            width={38}
                           />
                           <Tooltip
-                            contentStyle={{
-                              background: '#fbf7f1',
-                              border: '1px solid #d4c1af',
-                              borderRadius: 6,
-                              fontSize: 12,
+                            content={({ active, payload }) => {
+                              if (!active || !payload?.length) return null;
+                              const d = payload[0].payload as { day: string; fullDate: string; accuracy: number; personalAverage: number; task: string };
+                              return (
+                                <div className="focus-chart-tooltip">
+                                  <div className="tooltip-date">{d.fullDate || d.day}</div>
+                                  <div className="tooltip-task">{d.task}</div>
+                                  <div className="tooltip-row">
+                                    <span className="tooltip-dot burgundy" />
+                                    <span>Score:</span>
+                                    <strong className="tooltip-val">{d.accuracy}%</strong>
+                                  </div>
+                                  {d.personalAverage > 0 && (
+                                    <div className="tooltip-row">
+                                      <span className="tooltip-dot sage" />
+                                      <span>Personal average:</span>
+                                      <strong className="tooltip-val sage-val">{d.personalAverage}%</strong>
+                                    </div>
+                                  )}
+                                </div>
+                              );
                             }}
                           />
                           <Line
                             type="monotone"
-                            dataKey="accuracy"
-                            stroke="#64182f"
-                            strokeWidth={2.8}
-                            dot={{ r: 4, fill: '#64182f' }}
+                            dataKey="personalAverage"
+                            name="Personal average"
+                            stroke="#47745E"
+                            strokeWidth={1.8}
+                            strokeDasharray="4 4"
+                            dot={false}
+                            activeDot={false}
+                            isAnimationActive={false}
                           />
-                        </LineChart>
+                          <Area
+                            type="monotone"
+                            dataKey="accuracy"
+                            name="Your score"
+                            stroke="#64172F"
+                            strokeWidth={2.8}
+                            fill="url(#focusBurgundyFill)"
+                            fillOpacity={1}
+                            dot={{ r: 4, fill: '#64172F', stroke: '#F6F0E7', strokeWidth: 2 }}
+                            activeDot={{ r: 6.5, fill: '#64172F', stroke: '#FFFFFF', strokeWidth: 2 }}
+                          />
+                        </ComposedChart>
                       </ResponsiveContainer>
                     </div>
                   ) : (
-                    <div className="focus-chart">
-                      <div className="chart-y-axis">
-                        <span>100</span>
-                        <span>75</span>
-                        <span>50</span>
-                        <span>25</span>
+                    <div className="overview-chart-empty">
+                      <div className="chart-empty-icon">
+                        <Activity size={22} />
                       </div>
-                      <div className="chart-area">
-                        <div className="chart-grid-lines">
-                          <i />
-                          <i />
-                          <i />
-                          <i />
-                        </div>
-                        <div className="bar-group">
-                          {focusBars.map((height, index) => (
-                            <div className="bar-column" key={index}>
-                              <span className="chart-bar" style={{ height: `${height}%` }} />
-                              {index === 9 && <b className="chart-tooltip">91</b>}
-                            </div>
-                          ))}
-                        </div>
-                        <div className="chart-days">
-                          <span>Nov 08</span>
-                          <span>Nov 10</span>
-                          <span>Nov 12</span>
-                          <span>Nov 14</span>
-                          <span>Nov 16</span>
-                          <span>Nov 18</span>
-                        </div>
-                      </div>
+                      <h4>No test records yet</h4>
+                      <p>
+                        Complete a cognitive test in the Cognitive Lab to see your focus and performance mapped over time.
+                      </p>
+                      <button
+                        type="button"
+                        className="primary-button chart-empty-btn"
+                        onClick={() => setPage('Testing lab')}
+                      >
+                        Start check-in <ArrowRight size={15} />
+                      </button>
                     </div>
                   )}
 
                   <div className="trend-footer">
                     <span>
-                      <strong>+8.4%</strong> improvement this month
+                      {trendImprovement !== null ? (
+                        <>
+                          <strong style={{ color: trendImprovement >= 0 ? '#47745E' : '#805348' }}>
+                            {trendImprovement >= 0 ? `+${trendImprovement}%` : `${trendImprovement}%`}
+                          </strong>{' '}
+                          {trendImprovement >= 0 ? 'improvement' : 'change'} across recorded sessions
+                        </>
+                      ) : overviewTrend.length === 1 ? (
+                        <>Baseline established at <strong>{overviewTrend[0].accuracy}%</strong></>
+                      ) : (
+                        <>Daily tests unlock deeper cognitive trend lines</>
+                      )}
                     </span>
                     <button
                       className="text-button"
                       onClick={() => setPage('Analytics')}
                     >
-                      See all insights <ArrowRight size={14} />
+                      See all analytics <ArrowRight size={14} />
                     </button>
                   </div>
                 </section>

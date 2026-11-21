@@ -120,33 +120,147 @@ function getChartPlans(rows: Session[], task: TaskFilter): ChartPlan[] {
   return [plan('Accuracy over time', 'Correct responses per session.', generic, [line('accuracy', 'Accuracy (%)', '#64182f')], [0, 100]), plan('Response time over time', 'Median response time per session (ms).', generic, [line('medianRt', 'Median response (ms)', '#337454')])];
 }
 
-const taskColors = ['#64182f', '#337454', '#ad7950', '#4a5d6e', '#9b3d51', '#406d56', '#b8860b', '#7c4c3e', '#2e6b66', '#85586f'];
-function getDailyComparisonPlans(rows: Session[]): ChartPlan[] {
-  const grouped = new Map<string, Map<TaskFilter, Session[]>>();
-  for (const row of rows) {
-    const task = taskFor(row);
-    if (task === 'all' || task === 'other') continue;
-    const day = dateKey(row.createdAt);
-    if (!grouped.has(day)) grouped.set(day, new Map());
-    const dayTasks = grouped.get(day)!;
-    if (!dayTasks.has(task)) dayTasks.set(task, []);
-    dayTasks.get(task)!.push(row);
-  }
-  const data = [...grouped.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([day, dayTasks]) => {
-    const point: Record<string, string | number> = { day: dateText(day) };
-    for (const [task, dayRows] of dayTasks) {
-      point[`accuracy-${task}`] = Math.round(dayRows.reduce((sum, row) => sum + row.accuracy, 0) / dayRows.length);
-      point[`response-${task}`] = Math.round(dayRows.reduce((sum, row) => sum + row.medianRt, 0) / dayRows.length);
-    }
-    return point;
+const PIE_COLORS: Record<TaskFilter, string> = {
+  all: '#64172F',
+  'n-back': '#64172F',           // deep burgundy
+  'simple-reaction': '#47745E',  // sage green
+  'choice-reaction': '#397C78',  // muted teal
+  stroop: '#A65D76',             // dusty rose
+  'go-no-go': '#B77B55',         // warm terracotta
+  'digit-span': '#C18B13',       // muted mustard
+  'corsi-spatial': '#536B80',    // slate blue
+  'visual-search': '#805348',    // cocoa brown
+  'time-perception': '#91647D',  // soft mauve
+  'trail-making': '#82947A',     // olive green
+};
+
+const allCognitiveTests: TaskFilter[] = [
+  'n-back',
+  'simple-reaction',
+  'choice-reaction',
+  'stroop',
+  'go-no-go',
+  'digit-span',
+  'corsi-spatial',
+  'visual-search',
+  'time-perception',
+  'trail-making',
+];
+
+function getPieDistributionData(rows: Session[]) {
+  return allCognitiveTests.map((taskId) => {
+    const taskRows = rows.filter((r) => taskFor(r) === taskId);
+    const hasData = taskRows.length > 0;
+    const avgAccuracy = hasData
+      ? Math.round(taskRows.reduce((sum, r) => sum + r.accuracy, 0) / taskRows.length)
+      : 0;
+    const avgRt = hasData
+      ? Math.round(taskRows.reduce((sum, r) => sum + r.medianRt, 0) / taskRows.length)
+      : 0;
+    return {
+      id: taskId,
+      name: taskLabels[taskId],
+      color: PIE_COLORS[taskId],
+      accuracy: avgAccuracy,
+      rt: avgRt,
+      sessionCount: taskRows.length,
+      hasData,
+    };
   });
-  const availableTasks = testTasks.filter((task) => rows.some((row) => taskFor(row) === task));
-  const accuracySeries = availableTasks.map((task) => ({ key: `accuracy-${task}`, name: taskLabels[task], color: taskColors[testTasks.indexOf(task)] }));
-  const responseSeries = availableTasks.map((task) => ({ key: `response-${task}`, name: taskLabels[task], color: taskColors[testTasks.indexOf(task)] }));
-  return [
-    { title: 'Daily accuracy comparison', description: 'Correct responses per test, averaged within each day (%)', data, series: accuracySeries, domain: [0, 100] },
-    { title: 'Daily response time comparison', description: 'Median response time by test and day (ms); compare changes within each test.', data, series: responseSeries }
-  ];
+}
+
+function PieChartCard({
+  title,
+  description,
+  data,
+  dataKey,
+  unit,
+}: {
+  title: string;
+  description: string;
+  data: Array<{ id: TaskFilter; name: string; color: string; accuracy: number; rt: number; sessionCount: number; hasData: boolean }>;
+  dataKey: 'accuracy' | 'rt';
+  unit: string;
+}) {
+  const activeSlices = data.filter((d) => d.hasData && d[dataKey] > 0);
+  const totalValue = activeSlices.reduce((sum, d) => sum + d[dataKey], 0);
+
+  return (
+    <div className="panel analytics-chart-card analytics-pie-card">
+      <div className="panel-head">
+        <div>
+          <h2>{title}</h2>
+          <p>{description}</p>
+        </div>
+      </div>
+      <div className="chart analytics-pie-wrapper">
+        {activeSlices.length > 0 ? (
+          <ResponsiveContainer width="100%" height={260}>
+            <PieChart>
+              <Pie
+                data={activeSlices}
+                dataKey={dataKey}
+                nameKey="name"
+                cx="50%"
+                cy="50%"
+                innerRadius={55}
+                outerRadius={88}
+                paddingAngle={3}
+                stroke="#F6F0E7"
+                strokeWidth={2}
+              >
+                {activeSlices.map((entry) => (
+                  <Cell key={entry.id} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip
+                content={({ active, payload }) => {
+                  if (!active || !payload?.length) return null;
+                  const item = payload[0].payload as { name: string; color: string; accuracy: number; rt: number; sessionCount: number };
+                  const val = dataKey === 'accuracy' ? item.accuracy : item.rt;
+                  const pct = totalValue > 0 ? Math.round((val / totalValue) * 100) : 0;
+                  return (
+                    <div className="analytics-tooltip">
+                      <b>{item.name}</b>
+                      <span>
+                        <i style={{ background: item.color }} />
+                        {dataKey === 'accuracy' ? 'Accuracy:' : 'Response time:'}
+                        <strong>
+                          {val.toLocaleString()}
+                          {unit}
+                        </strong>
+                      </span>
+                      <span>
+                        Share of total: <strong>{pct}%</strong>
+                      </span>
+                      <span>
+                        Sessions recorded: <strong>{item.sessionCount}</strong>
+                      </span>
+                    </div>
+                  );
+                }}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+        ) : (
+          <div className="pie-empty-state">
+            <p>No session data recorded for this time range.</p>
+          </div>
+        )}
+      </div>
+      <div className="analytics-pie-legend">
+        {data.map((item) => (
+          <div key={item.id} className={`pie-legend-item ${item.hasData ? '' : 'no-data'}`}>
+            <span className="pie-legend-dot" style={{ background: item.color }} />
+            <span className="pie-legend-name">{item.name}</span>
+            <span className="pie-legend-value">
+              {item.hasData ? `${(dataKey === 'accuracy' ? item.accuracy : item.rt).toLocaleString()}${unit}` : '—'}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function ChartTooltip({ active, payload, label, series, unit }: { active?: boolean; payload?: Array<{ name?: string; value?: number | string; color?: string; dataKey?: string }>; label?: string | number; series: Series[]; unit: string }) {
@@ -199,7 +313,8 @@ export default function Analytics() {
   const rangePreview = previewSessions.filter((row) => Date.parse(row.createdAt) >= previewCutoff);
   const isSampleView = filtered.length === 0;
   const chartRows = isSampleView ? rangePreview.filter((row) => task === 'all' || taskFor(row) === task) : filtered;
-  const plans = useMemo(() => task === 'all' ? getDailyComparisonPlans(chartRows) : getChartPlans(chartRows, task), [chartRows, task]);
+  const plans = useMemo(() => (task === 'all' ? [] : getChartPlans(chartRows, task)), [chartRows, task]);
+  const pieData = useMemo(() => getPieDistributionData(chartRows), [chartRows]);
 
   return <section className="analytics-violet" aria-label="Interactive cognitive performance analytics">
     <div className="analytics-toolbar panel"><div><span className="eyebrow"><Filter size={13}/> INTERACTIVE FILTERS</span><h2>Explore your personal session trends</h2><p>{usingMock ? 'Preview samples are synthetic and are not personal records.' : 'Only non-synthetic sessions are shown; trends are descriptive, not diagnostic.'}</p></div><button className="neuronutri-refresh" type="button" onClick={() => void load()} disabled={loading} aria-label="Refresh analytics"><RefreshCw size={15}/></button><div className="analytics-filters"><label>Task<select value={task} onChange={(event) => setTask(event.target.value as TaskFilter)}>{(Object.keys(taskLabels) as TaskFilter[]).map((id) => <option key={id} value={id}>{taskLabels[id]}</option>)}</select></label><label>Date range<select value={range} onChange={(event) => setRange(event.target.value as Range)}><option value="7">7 Days</option><option value="30">30 Days</option><option value="all">All Time</option></select></label>{mockAllowed && <button className={`analytics-preview-toggle ${previewMode ? 'active' : ''}`} type="button" aria-pressed={previewMode} onClick={() => setPreviewMode((value) => !value)}>{previewMode ? 'Preview data: on' : 'Preview data: off'}</button>}</div></div>
@@ -209,9 +324,30 @@ export default function Analytics() {
     </nav>
     {error && <div className={usingMock ? 'analytics-preview-note' : 'scheduler-error'} role={usingMock ? 'status' : 'alert'}>{error}</div>}
     {loading ? <div className="panel analytics-empty">Loading performance trends…</div> : <>
-      {(isSampleView || usingMock) && <div className="analytics-preview-banner">SAMPLE PREVIEW · Synthetic trend lines for presentation only. These values are not personal test results.</div>}
-      {plans.length ? <div className="analytics-chart-grid">{plans.map((chart) => <ChartCard key={chart.title} chart={chart}/>)}</div> : <div className="panel analytics-empty"><span className="empty-icon"><BarChart3 size={23}/></span><b>No trend data available</b><small>Complete a cognitive test or choose a wider date range to see daily performance graphs.</small></div>}
-      {!isSampleView && <p className="analytics-data-note">Graphs use saved cognitive test sessions only. Daily values average multiple sessions of the same test.</p>}
+      {(isSampleView || usingMock) && <div className="analytics-preview-banner">SAMPLE PREVIEW · Performance values for presentation only. These values are not personal test results.</div>}
+      {task === 'all' ? (
+        <div className="analytics-pie-grid">
+          <PieChartCard
+            title="Cognitive Test Accuracy Distribution"
+            description="Mean accuracy across cognitive battery tests"
+            data={pieData}
+            dataKey="accuracy"
+            unit="%"
+          />
+          <PieChartCard
+            title="Cognitive Test Response Time Distribution"
+            description="Median response duration across cognitive battery tests"
+            data={pieData}
+            dataKey="rt"
+            unit=" ms"
+          />
+        </div>
+      ) : plans.length ? (
+        <div className="analytics-chart-grid">{plans.map((chart) => <ChartCard key={chart.title} chart={chart}/>)}</div>
+      ) : (
+        <div className="panel analytics-empty"><span className="empty-icon"><BarChart3 size={23}/></span><b>No trend data available</b><small>Complete a cognitive test or choose a wider date range to see daily performance graphs.</small></div>
+      )}
+      {!isSampleView && <p className="analytics-data-note">Charts use saved cognitive test sessions only. Proportions represent distribution across battery assessments.</p>}
     </>}
   </section>;
 }
