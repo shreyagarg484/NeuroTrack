@@ -119,11 +119,10 @@ const configuredCorsOrigins = (process.env.CORS_ORIGIN ?? '')
   .split(',')
   .map((origin) => origin.trim())
   .filter(Boolean);
-const corsOrigin = configuredCorsOrigins.length
-  ? configuredCorsOrigins
-  : process.env.NODE_ENV === 'production'
-    ? true
-    : ['http://localhost:5173', 'http://127.0.0.1:5173'];
+// Reflect the requesting origin unless an explicit allow-list is configured.
+// This demo has no auth or cookies, and a separately hosted frontend must be
+// able to call the API. Set CORS_ORIGIN to restrict it.
+const corsOrigin = configuredCorsOrigins.length ? configuredCorsOrigins : true;
 app.use(cors({ origin: corsOrigin }));
 app.use(express.json({ limit: '20kb' }));
 app.use('/api', rateLimit({ windowMs: 60_000, limit: 60, standardHeaders: 'draft-7', legacyHeaders: false }));
@@ -598,13 +597,19 @@ app.post('/api/recipes', async (req, res) => {
   }
 });
 
-if (process.env.NODE_ENV === 'production') {
-  const clientBuildPath = resolve(dirname(fileURLToPath(import.meta.url)), '../../client/dist');
+// Serve the built frontend whenever it exists, even if NODE_ENV is not set.
+// Render's default health check requests "/", so returning 200 keeps the
+// service healthy; if no build is present, expose a small JSON response.
+const clientBuildPath = resolve(dirname(fileURLToPath(import.meta.url)), '../../client/dist');
+const clientIndexPath = resolve(clientBuildPath, 'index.html');
+if (existsSync(clientIndexPath)) {
   app.use(express.static(clientBuildPath));
   app.get('*', (req, res, next) => {
     if (req.path.startsWith('/api/')) return next();
-    return res.sendFile(resolve(clientBuildPath, 'index.html'));
+    return res.sendFile(clientIndexPath);
   });
+} else {
+  app.get('/', (_req, res) => res.json({ ok: true, service: 'NeuroTrack API' }));
 }
 
 app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => { console.error('Request error:', error instanceof Error ? `${error.message}\n${error.stack}` : 'unknown'); res.status(400).json({ error: 'Invalid request.' }); });
