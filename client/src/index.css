@@ -3133,3 +3133,84 @@ input, select, textarea {
   border: 1px solid var(--line);
   color: var(--muted);
 }
+
+/* Voice input (Context Journal) */
+.voice-input-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+}
+.voice-input-row textarea {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.voice-input-wrapper {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+.voice-input-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-light);
+  color: var(--ink);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.15s;
+}
+.voice-input-btn:hover:not(:disabled) {
+  border-color: var(--burgundy);
+  color: var(--burgundy);
+  transform: translateY(-1px);
+}
+.voice-input-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.voice-input-btn.voice-listening {
+  background: #f7e8ea;
+  border-color: var(--burgundy);
+  color: var(--burgundy);
+  animation: voice-pulse 1.2s ease-in-out infinite;
+}
+.voice-input-btn.voice-processing {
+  background: #f7e8ea;
+  border-color: var(--burgundy);
+  color: var(--burgundy);
+}
+.voice-input-btn.voice-error {
+  background: #f7e8ea;
+  border-color: #b33a3a;
+  color: #b33a3a;
+}
+.voice-input-error {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: #b33a3a;
+}
+.voice-input-error-dismiss {
+  border: 0;
+  background: transparent;
+  color: #b33a3a;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+}
+.voice-input-unsupported {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-top: 4px;
+}
+@keyframes voice-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
