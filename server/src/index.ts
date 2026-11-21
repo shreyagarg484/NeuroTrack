@@ -107,7 +107,15 @@ function parseTinyFishResult<T>(payload: unknown, schema: z.ZodType<T>): { ok: t
 
 const app = express();
 app.disable('x-powered-by');
-app.use(cors({ origin: ['http://localhost:5173', 'http://127.0.0.1:5173'] }));
+// Render (and most hosts) terminate TLS at a single proxy in front of the app.
+// Trust that first hop so rate limiting keys on the real client IP instead of
+// the proxy's address. Local development is unaffected.
+app.set('trust proxy', 1);
+const corsOrigins = (process.env.CORS_ORIGIN ?? 'http://localhost:5173,http://127.0.0.1:5173')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+app.use(cors({ origin: corsOrigins }));
 app.use(express.json({ limit: '20kb' }));
 app.use('/api', rateLimit({ windowMs: 60_000, limit: 60, standardHeaders: 'draft-7', legacyHeaders: false }));
 app.get('/api/health', (_req, res) => res.json({ ok: true }));

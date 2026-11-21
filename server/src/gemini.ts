@@ -8,8 +8,10 @@ export const isGeminiConfigured = (apiKey: string | undefined): boolean => {
 };
 
 /** Models tried in order when GEMINI_MODEL is not set. Older models are
- * retired by Google, so the caller falls through to the next available one. */
-export const DEFAULT_GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-3.8-flash'];
+ * retired by Google, so the caller falls through to the next available one.
+ * Keep the newest working model first: gemini-2.0-flash and gemini-2.5-flash
+ * now return HTTP 404 for new API keys. */
+export const DEFAULT_GEMINI_MODELS = ['gemini-3.8-flash', 'gemini-2.5-flash'];
 
 export const geminiModel = (): string => process.env.GEMINI_MODEL?.trim() || DEFAULT_GEMINI_MODELS[0];
 
@@ -197,7 +199,7 @@ async function requestGeminiJson<T>(options: {
       : response.status === 401 || response.status === 403
         ? 'Check that the GEMINI_API_KEY is valid and enabled for this model.'
         : response.status === 429
-          ? 'Gemini rate limit reached. Try again later.'
+          ? 'Gemini quota reached. The free tier allows about 20 requests per day; wait for the quota to reset or enable billing on the API key.'
           : 'Check the Gemini service and server logs.';
     throw new GeminiApiError(response.status, `Gemini request failed (HTTP ${response.status}). ${advice}${detail ? ` ${detail}` : ''}`);
   }

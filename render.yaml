@@ -1,6 +1,7 @@
 services:
   - type: web
     name: neurotrack
+    branch: main
     env: node
     buildCommand: npm install --include=dev && npm run build
     startCommand: npm start
