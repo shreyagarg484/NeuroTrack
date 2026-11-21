@@ -2574,11 +2574,11 @@ input, select, textarea {
 
 .hydration-tracker {
   padding: 18px 20px 16px;
-  border: 1px solid #F4B6C8;
+  border: 1px solid rgba(138, 64, 87, 0.28);
   border-radius: 12px;
-  background: linear-gradient(145deg, #F8DCE5 0%, #FCEAF0 55%, #F4B6C8 100%);
-  color: #713B50;
-  box-shadow: 0 8px 24px -4px rgba(244, 182, 200, 0.35), 0 2px 6px rgba(113, 59, 80, 0.06);
+  background: linear-gradient(145deg, #F3E7D9 0%, #E9D8C5 100%);
+  color: #64172F;
+  box-shadow: 0 10px 24px -6px rgba(100, 23, 47, 0.08), 0 2px 6px rgba(128, 94, 84, 0.05);
 }
 .hydration-heading {
   display: flex;
@@ -2591,44 +2591,44 @@ input, select, textarea {
   align-items: center;
   gap: 6px;
   margin-bottom: 5px;
-  color: #C76B89;
+  color: #8A4057;
   font: 700 8.5px 'DM Sans', sans-serif;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 .hydration-eyebrow svg {
-  color: #C76B89;
+  color: #B77B85;
 }
 .hydration-heading h2 {
   margin: 0;
-  color: #713B50;
-  font: 700 15px 'DM Sans', sans-serif;
-  letter-spacing: -0.2px;
+  color: #64172F;
+  font: 700 15px 'DM Serif Display', Georgia, serif;
+  letter-spacing: -0.1px;
 }
 .hydration-total {
   padding: 6px 10px;
-  border: 1px solid #F4B6C8;
+  border: 1px solid rgba(138, 64, 87, 0.25);
   border-radius: 8px;
-  background: #FFFFFF;
-  color: #713B50;
+  background: #FFF9F2;
+  color: #64172F;
   font: 700 11.5px 'DM Mono', monospace;
   white-space: nowrap;
-  box-shadow: 0 2px 5px rgba(244, 182, 200, 0.25);
+  box-shadow: 0 2px 5px rgba(100, 23, 47, 0.05);
 }
 .hydration-progress {
   height: 12px;
   margin: 14px 0 12px;
   overflow: hidden;
   border-radius: 99px;
-  background: #FCEAF0;
-  border: 1px solid #F8DCE5;
-  box-shadow: inset 0 1px 3px rgba(113, 59, 80, 0.1);
+  background: #E4D2BF;
+  border: 1px solid rgba(138, 64, 87, 0.15);
+  box-shadow: inset 0 1px 3px rgba(100, 23, 47, 0.08);
 }
 .hydration-progress-fill {
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #F4B6C8 0%, #D995AB 45%, #C76B89 100%);
-  box-shadow: 0 0 10px rgba(199, 107, 137, 0.4);
+  background: linear-gradient(90deg, #64172F 0%, #8A4057 55%, #B77B85 100%);
+  box-shadow: 0 0 10px rgba(100, 23, 47, 0.25);
   transition: width 0.45s cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 .hydration-actions {
@@ -2650,17 +2650,17 @@ input, select, textarea {
 }
 .hydration-add {
   flex: 1;
-  border: 1px solid #D995AB;
-  background: #F8DCE5;
-  color: #713B50;
-  box-shadow: 0 2px 4px rgba(217, 149, 171, 0.2);
+  border: 1px solid rgba(138, 64, 87, 0.35);
+  background: #F3E7D9;
+  color: #64172F;
+  box-shadow: 0 1px 3px rgba(100, 23, 47, 0.05);
 }
 .hydration-add:hover:not(:disabled) {
   transform: translateY(-1px);
-  background: #F4B6C8;
-  border-color: #C76B89;
-  color: #713B50;
-  box-shadow: 0 4px 10px rgba(199, 107, 137, 0.3);
+  background: #E8D3C4;
+  border-color: #8A4057;
+  color: #64172F;
+  box-shadow: 0 3px 8px rgba(100, 23, 47, 0.12);
 }
 .hydration-add:disabled {
   opacity: 0.55;
@@ -2669,32 +2669,33 @@ input, select, textarea {
   box-shadow: none;
 }
 .hydration-add.highlighted {
-  background: #F4B6C8;
-  border-color: #C76B89;
-  color: #713B50;
-  box-shadow: 0 2px 8px rgba(199, 107, 137, 0.35);
+  background: #EDE0D0;
+  border-color: #8A4057;
+  color: #64172F;
+  box-shadow: 0 2px 6px rgba(100, 23, 47, 0.1);
 }
 .hydration-add.highlighted:hover:not(:disabled) {
-  background: #D995AB;
-  border-color: #C76B89;
-  color: #FFFFFF;
-  box-shadow: 0 4px 12px rgba(199, 107, 137, 0.45);
+  background: #DEC7B8;
+  border-color: #64172F;
+  color: #501225;
+  box-shadow: 0 4px 10px rgba(100, 23, 47, 0.18);
 }
 .hydration-remind {
-  border: 1px solid #D995AB;
-  background: #FCEAF0;
-  color: #713B50;
+  border: 1px solid rgba(138, 64, 87, 0.3);
+  background: #FFF9F2;
+  color: #64172F;
+  box-shadow: 0 1px 3px rgba(100, 23, 47, 0.04);
 }
 .hydration-remind svg {
-  color: #C76B89;
+  color: #64172F;
   transition: transform 0.2s ease;
 }
 .hydration-remind:hover {
-  border-color: #C76B89;
-  background: #F8DCE5;
-  color: #713B50;
+  border-color: #64172F;
+  background: #F3E7D9;
+  color: #501225;
   transform: translateY(-1px);
-  box-shadow: 0 4px 10px rgba(217, 149, 171, 0.3);
+  box-shadow: 0 3px 8px rgba(100, 23, 47, 0.12);
 }
 .hydration-remind:hover svg {
   transform: rotate(15deg);
@@ -2705,13 +2706,12 @@ input, select, textarea {
   justify-content: space-between;
   gap: 6px;
   margin-top: 10px;
-  color: #713B50;
+  color: #805E54;
   font-size: 10.5px;
   font-weight: 500;
-  opacity: 0.9;
 }
 .hydration-footer svg {
-  color: #C76B89;
+  color: #8A4057;
 }
 .context-form > .hydration-tracker {
   margin: 16px 0 3px;
@@ -2726,11 +2726,11 @@ input, select, textarea {
   z-index: 1000;
   max-width: min(380px, calc(100vw - 40px));
   padding: 14px 18px;
-  border: 1px solid #F4B6C8;
+  border: 1px solid rgba(138, 64, 87, 0.3);
   border-radius: 10px;
-  background: linear-gradient(145deg, #F8DCE5 0%, #FCEAF0 100%);
-  color: #713B50;
-  box-shadow: 0 14px 40px rgba(113, 59, 80, 0.2);
+  background: linear-gradient(145deg, #FFF9F2 0%, #F3E7D9 100%);
+  color: #64172F;
+  box-shadow: 0 14px 40px rgba(100, 23, 47, 0.15);
   font: 600 12px 'DM Sans', sans-serif;
   line-height: 1.5;
   animation: hydration-toast-in 0.22s ease-out;
