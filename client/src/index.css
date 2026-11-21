@@ -11,27 +11,31 @@
 
   font-family: var(--font-body);
   color: #2d3035;
-  background: #f7f1e8;
+  background: #F6F0E7;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
 
-  --canvas: #f7f1e8;
-  --canvas-deep: #f0e6da;
-  --surface: #eee4d7;
-  --surface-light: #f5ece2;
+  /* NeuroTrack Brand Color System */
+  --canvas: #F6F0E7;            /* Warm Beige */
+  --canvas-deep: #EFE4D5;       /* Card Beige */
+  --surface: #EFE4D5;          /* Card Beige */
+  --surface-light: #F6F0E7;    /* Warm Beige */
   --line: #ded1c2;
   --line-dark: #ccb9a8;
-  --burgundy: #64182f;
-  --burgundy-deep: #481022;
-  --burgundy-soft: #ead4d5;
+  --burgundy: #64172F;          /* Primary Burgundy */
+  --burgundy-deep: #501225;     /* Deep Burgundy */
+  --burgundy-light: #F3E5E5;    /* Light Burgundy */
+  --burgundy-soft: #F3E5E5;
   --ink: #2d3035;
-  --muted: #887b70;
-  --cream: #fbf7f1;
-  --green: #337454;
-  --green-soft: #dce8de;
-  --sand: #ad7950;
-  --sand-soft: #eedbc6;
-  --shadow: 0 14px 35px rgba(79, 43, 27, 0.08);
+  --muted: #805348;             /* Warm Brown */
+  --cream: #FBF7F1;
+  --green: #47745E;             /* Sage Green */
+  --green-soft: #d8e5dd;
+  --rose: #B77B85;              /* Muted Rose */
+  --brown: #805348;             /* Warm Brown */
+  --sand: #B77B55;
+  --sand-soft: #F3E5E5;
+  --shadow: 0 14px 35px rgba(80, 18, 37, 0.08);
 }
 
 * { box-sizing: border-box; }
@@ -82,11 +86,11 @@ h1, h2, h3,
 }
 
 .sidebar {
-  width: 252px;
-  flex: 0 0 252px;
+  width: 256px;
+  flex: 0 0 256px;
   min-height: 100vh;
   padding: 28px 16px 18px;
-  background: #eee4d8;
+  background: var(--canvas);
   border-right: 1px solid var(--line);
   display: flex;
   flex-direction: column;
@@ -110,14 +114,14 @@ h1, h2, h3,
 }
 .brand-lockup > span span, .auth-brand > span span { font-weight: 400; color: #786d64; }
 .brand-mark {
-  height: 33px;
-  width: 33px;
-  border: 1px solid rgba(100,24,47,0.28);
+  height: 34px;
+  width: 34px;
+  border: 1px solid rgba(100, 23, 47, 0.28);
   border-radius: 9px;
   color: var(--burgundy);
   display: grid;
   place-items: center;
-  background: rgba(255,251,246,0.55);
+  background: #F3E5E5;
 }
 
 .workspace-label, .panel-kicker, .eyebrow {
@@ -128,34 +132,56 @@ h1, h2, h3,
   letter-spacing: 1.35px;
   text-transform: uppercase;
 }
-.workspace-label { margin: 34px 10px 10px; }
+.workspace-label { margin: 32px 12px 10px; }
 .second-label { margin-top: 24px; }
 
-.main-nav { display: grid; gap: 3px; }
+.main-nav { display: grid; gap: 4px; }
 .nav-item {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 11px;
+  gap: 12px;
   width: 100%;
-  padding: 9px 12px;
-  color: #72675e;
+  padding: 10px 14px;
+  color: #4A3B32;
   background: transparent;
-  border-radius: 7px;
+  border-radius: 8px;
   text-align: left;
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 500;
-  transition: all 0.18s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
 }
-.nav-item:hover {
-  background: rgba(255, 251, 246, 0.65);
+.nav-item svg {
+  color: #9B5A68;
+  flex-shrink: 0;
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+.nav-item:hover:not(.active) {
+  background: rgba(183, 123, 133, 0.12);
+  color: var(--burgundy);
+}
+.nav-item:hover:not(.active) svg {
   color: var(--burgundy);
 }
 .nav-item.active {
   color: var(--burgundy);
-  background: #f8f1e9;
-  box-shadow: inset 3px 0 0 var(--burgundy);
-  font-weight: 700;
+  background: #F3E5E5;
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(100, 23, 47, 0.06);
+}
+.nav-item.active svg {
+  color: var(--burgundy);
+}
+.nav-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 7px;
+  bottom: 7px;
+  width: 4px;
+  background: var(--burgundy);
+  border-radius: 0 4px 4px 0;
 }
 .nav-count {
   margin-left: auto;
@@ -166,16 +192,16 @@ h1, h2, h3,
   padding: 0 5px;
   color: var(--burgundy);
   border-radius: 20px;
-  background: var(--burgundy-soft);
+  background: #E8D4D6;
   font-size: 10px;
   font-weight: 700;
 }
 .nav-dot {
   margin-left: auto;
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
-  background: var(--green);
+  background: var(--burgundy);
 }
 
 .sidebar-bottom { margin-top: auto; padding-top: 20px; }
