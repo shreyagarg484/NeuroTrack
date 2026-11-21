@@ -273,6 +273,14 @@ html, body { overflow-x: hidden; }
 .learning-topic-select { max-width: 420px; }
 .nt-line-topics { margin-top: 6px; }
 
+/* Magnetic wrappers must not disturb existing flex/grid flow */
+.nt-brand-magnetic, .nt-profile-magnetic { display: flex; width: 100%; }
+.nt-brand-magnetic > *, .nt-profile-magnetic > * { width: 100%; }
+.sound-volume-slot { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; color: var(--muted); }
+.sound-volume-slot > svg { flex: none; }
+.sound-wake { flex: 1; min-width: 90px; }
+.sound-wake .wake-slider { width: 100%; }
+
 @media (max-width: 850px) {
   .nt-specular { min-height: 42px; }
   .nt-glow-card:hover { transform: none; }

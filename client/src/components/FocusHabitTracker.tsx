@@ -2,6 +2,7 @@ import { CSSProperties, FormEvent, useEffect, useMemo, useRef, useState } from '
 import { Activity, Check, Clock3, Mic, Pause, Pencil, Play, RotateCcw, Smartphone, Timer, Trash2, Volume2, X } from 'lucide-react';
 import VoiceInputButton from './VoiceInputButton';
 import { apiRequest } from '../services/api';
+import { SpecularCta, WakeRange } from './ui/reactBitsAdapters';
 
 type Habit = { id: number; date: string; screenTimeMinutes: number; distractingAppMinutes: number; focusSessionsStarted: number; focusSessionsCompleted: number; phoneEnvironment: string; studyInterruptCount: number; notes: string; createdAt: string };
 type HabitForm = Omit<Habit, 'id' | 'createdAt'>;
@@ -260,7 +261,7 @@ function DeepWorkFocus(){
     <section className="panel focus-audio"><div className="panel-head"><div><span className="focus-habit-kicker"><Volume2 size={13}/> FOCUS SOUND GENERATOR</span><h2>Choose a soundscape</h2><p>Noise is generated locally. The rainfall recording is bundled with the app.</p></div></div>
       <div className="sound-options">{SOUND_OPTIONS.map(option=><button className={soundKey===option.key?'selected':''} key={option.key} onClick={()=>{setSoundKey(option.key);setMessage('');}}>{option.label}</button>)}</div>
       <div className={`sound-now${playing?' is-playing':''}`}><div className="sound-wave" aria-hidden="true">{Array.from({length:9},(_,i)=><i key={i}/>)}</div><b>{sound.label}</b><span>{playing?'Now playing':'Ready to play'}</span><small>{sound.description}</small></div>
-      <div className="sound-controls"><button className="primary" onClick={toggleSound}>{playing?<><Pause size={15}/> Pause</>:<><Play size={15} fill="currentColor"/> Play</>}</button><label><Volume2 size={15}/><input aria-label="Master volume" type="range" min="0" max="1" step=".01" value={volume} onChange={e=>setVolume(Number(e.target.value))}/><span>{Math.round(volume*100)}%</span></label></div>
+      <div className="sound-controls"><SpecularCta onClick={toggleSound} ariaLabel={playing ? 'Pause sound' : 'Play sound'} size="sm">{playing?<><Pause size={15}/> Pause</>:<><Play size={15} fill="currentColor"/> Play</>}</SpecularCta><label className="sound-volume-slot"><Volume2 size={15}/><WakeRange value={volume} min={0} max={1} step={0.01} onChange={setVolume} ariaLabel="Master volume" className="sound-wake" /></label></div>
       <audio ref={audioRef} loop preload="none" onError={()=>{setPlaying(false);setMessage('The rainfall recording could not be loaded. Try one of the locally generated soundscapes.');}}/>
       <div className="habit-integrity"><b>Sound, on your terms</b><span>White, pink, brown, and ambient drift are generated in your browser with Web Audio — no downloads needed. Rainfall uses a bundled, public-domain recording and works offline.</span></div>
     </section>
