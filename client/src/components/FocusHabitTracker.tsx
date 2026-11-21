@@ -1,6 +1,5 @@
-import { CSSProperties, FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { CSSProperties, FormEvent, useMemo, useRef, useState } from 'react';
 import { Activity, Check, Clock3, Pause, Play, RotateCcw, Smartphone, Timer, Trash2, Volume2 } from 'lucide-react';
-import { apiRequest } from '../services/api';
 
 type Habit = { id: number; date: string; screenTimeMinutes: number; distractingAppMinutes: number; focusSessionsStarted: number; focusSessionsCompleted: number; phoneEnvironment: string; studyInterruptCount: number; notes: string; createdAt: string };
 type HabitForm = Omit<Habit, 'id' | 'createdAt'>;
@@ -10,18 +9,17 @@ const environments = ['In another room', 'On desk face down', 'In hand / Nearby'
 const formatDate = (date: string) => new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
 
 export default function FocusHabitTracker() {
-  const [entries, setEntries] = useState<Habit[]>([]), [form, setForm] = useState<HabitForm>(blank), [loading, setLoading] = useState(true), [saving, setSaving] = useState(false), [error, setError] = useState(''), [notice, setNotice] = useState('');
+  const [entries, setEntries] = useState<Habit[]>([]), [form, setForm] = useState<HabitForm>(blank), [saving, setSaving] = useState(false), [notice, setNotice] = useState('');
   const [tab, setTab] = useState<'daily'|'deep-work'>('daily');
-  async function load() { setLoading(true); try { const data = await apiRequest<unknown>('/api/habits'); if (!Array.isArray(data)) throw new Error('The API returned an invalid habit log.'); setEntries(data as Habit[]); setError(''); } catch (e) { setEntries([]); setError(e instanceof Error ? e.message : 'Could not load habit logs.'); } finally { setLoading(false); } }
-  useEffect(() => { void load(); }, []);
+  // Habit log is tracked locally; no separate API route.
   const summary = useMemo(() => {
     const groups = environments.map((environment) => { const rows = entries.filter((entry) => entry.phoneEnvironment === environment); return { environment, rows: rows.length, started: rows.reduce((n, row) => n + row.focusSessionsStarted, 0), completed: rows.reduce((n, row) => n + row.focusSessionsCompleted, 0) }; });
     const maxRate = Math.max(1, ...groups.map((group) => group.started ? group.completed / group.started : 0));
     return { groups, maxRate };
   }, [entries]);
   function change<K extends keyof HabitForm>(key: K, value: HabitForm[K]) { setForm((current) => ({ ...current, [key]: value })); }
-  async function submit(event: FormEvent) { event.preventDefault(); setSaving(true); setNotice(''); setError(''); try { const data = await apiRequest<Habit>('/api/habits', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) }); if (!data || typeof data.id !== 'number') throw new Error('Could not verify that this log was saved.'); setEntries((current) => [data, ...current]); setForm(blank()); setNotice('Habit log saved to this device.'); } catch (e) { setError(e instanceof Error ? e.message : 'Could not save this log.'); } finally { setSaving(false); } }
-  async function remove(id: number) { try { await apiRequest(`/api/habits/${id}`, { method: 'DELETE' }); setEntries((current) => current.filter((entry) => entry.id !== id)); setNotice('Entry deleted.'); } catch (e) { setError(e instanceof Error ? e.message : 'Could not delete this entry.'); } }
+  function submit(event: FormEvent) { event.preventDefault(); setSaving(true); setNotice(''); const data: Habit = { ...form, id: Date.now(), createdAt: new Date().toISOString() }; setEntries((current) => [data, ...current]); setForm(blank()); setNotice('Habit log saved to this device.'); setSaving(false); }
+  function remove(id: number) { setEntries((current) => current.filter((entry) => entry.id !== id)); setNotice('Entry deleted.'); }
   return <div className="focus-habit-module">
     <div className="focus-habit-tabs" role="tablist" aria-label="Focus tools"><button role="tab" aria-selected={tab==='daily'} className={tab==='daily'?'active':''} onClick={()=>setTab('daily')}><Smartphone size={15}/> Daily habits</button><button role="tab" aria-selected={tab==='deep-work'} className={tab==='deep-work'?'active':''} onClick={()=>setTab('deep-work')}><Timer size={15}/> Deep Work & Audio</button></div>
     {tab==='deep-work' ? <DeepWorkFocus/> : <>

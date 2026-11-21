@@ -63,6 +63,7 @@ export interface VoiceInputButtonProps {
   disabled?: boolean;
   label?: string;
   language?: string;
+  append?: boolean;
 }
 
 export default function VoiceInputButton({
