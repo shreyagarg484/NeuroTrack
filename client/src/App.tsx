@@ -967,7 +967,7 @@ export default function App() {
                   <span className="panel-kicker">EXPLORE YOUR SIGNALS</span>
                   <h3>Complete Cognitive Library</h3>
                 </div>
-                <span className="text-xs text-muted font-mono">{filteredTests.length} available</span>
+                <span className="text-xs text-muted font-body">{filteredTests.length} available</span>
               </div>
 
               <section className="test-library">
