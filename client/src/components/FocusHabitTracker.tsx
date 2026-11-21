@@ -1,5 +1,6 @@
 import { CSSProperties, FormEvent, useEffect, useMemo, useRef, useState } from 'react';
-import { Activity, Check, Clock3, Pause, Play, RotateCcw, Smartphone, Timer, Trash2, Volume2 } from 'lucide-react';
+import { Activity, Check, Clock3, Mic, Pause, Pencil, Play, RotateCcw, Smartphone, Timer, Trash2, Volume2, X } from 'lucide-react';
+import VoiceInputButton from './VoiceInputButton';
 import { apiRequest } from '../services/api';
 
 type Habit = { id: number; date: string; screenTimeMinutes: number; distractingAppMinutes: number; focusSessionsStarted: number; focusSessionsCompleted: number; phoneEnvironment: string; studyInterruptCount: number; notes: string; createdAt: string };
@@ -7,11 +8,36 @@ type HabitForm = Omit<Habit, 'id' | 'createdAt'>;
 const today = () => new Date().toLocaleDateString('en-CA');
 const blank = (): HabitForm => ({ date: today(), screenTimeMinutes: 240, distractingAppMinutes: 45, focusSessionsStarted: 2, focusSessionsCompleted: 1, phoneEnvironment: 'On desk face down', studyInterruptCount: 0, notes: '' });
 const environments = ['In another room', 'On desk face down', 'In hand / Nearby'];
+type HabitParsed = Partial<Pick<HabitForm, 'screenTimeMinutes' | 'distractingAppMinutes' | 'focusSessionsStarted' | 'focusSessionsCompleted' | 'phoneEnvironment' | 'studyInterruptCount'>>;
+const minutesFrom = (value: number, unit: string | undefined) => /hour|hr|h/.test((unit ?? '').toLowerCase()) ? Math.round(value * 60) : Math.round(value);
+// Best-effort extraction of daily-log fields from a free-text transcript.
+function parseHabitTranscript(text: string): HabitParsed {
+  const result: HabitParsed = {};
+  const lower = text.toLowerCase();
+  const num = (re: RegExp) => { const m = lower.match(re); return m ? Number(m[1]) : undefined; };
+  const screen = lower.match(/screen(?:\s*time)?[^0-9]*(\d+(?:\.\d+)?)\s*(hours?|hrs?|h|minutes?|mins?|m)?/) ?? lower.match(/(\d+(?:\.\d+)?)\s*(hours?|hrs?|h|minutes?|mins?|m)[^.]*screen/);
+  if (screen) { const value = minutesFrom(Number(screen[1]), screen[2]); if (value >= 0 && value <= 900) result.screenTimeMinutes = value; }
+  const distracting = lower.match(/distract(?:ing|ion)?\s*(?:app|apps|use)?[^0-9]*(\d+(?:\.\d+)?)\s*(hours?|hrs?|h|minutes?|mins?|m)?/) ?? lower.match(/(\d+(?:\.\d+)?)\s*(hours?|hrs?|h|minutes?|mins?|m)[^.]*distract/);
+  if (distracting) { const value = minutesFrom(Number(distracting[1]), distracting[2]); if (value >= 0 && value <= 360) result.distractingAppMinutes = value; }
+  const started = num(/(\d+)\s*(?:focus\s*)?sessions?\s*started/) ?? num(/started[^0-9]*(\d+)/);
+  if (started !== undefined && started >= 0 && started <= 100) result.focusSessionsStarted = started;
+  const completed = num(/(\d+)\s*(?:focus\s*)?sessions?\s*completed/) ?? num(/completed[^0-9]*(\d+)/);
+  if (completed !== undefined && completed >= 0 && completed <= 100) result.focusSessionsCompleted = completed;
+  if (/another room|different room|other room/.test(lower)) result.phoneEnvironment = 'In another room';
+  else if (/face\s*down|on (?:the |my )?desk/.test(lower)) result.phoneEnvironment = 'On desk face down';
+  else if (/in (?:my )?hand|nearby|pocket|next to me/.test(lower)) result.phoneEnvironment = 'In hand / Nearby';
+  const interruptions = num(/interrupt(?:ion|ions|ed)?[^0-9]*(\d+)/) ?? num(/(\d+)\s*interruptions?/);
+  if (interruptions !== undefined && interruptions >= 0 && interruptions <= 500) result.studyInterruptCount = interruptions;
+  return result;
+}
 const formatDate = (date: string) => new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
 
 export default function FocusHabitTracker() {
   const [entries, setEntries] = useState<Habit[]>([]), [form, setForm] = useState<HabitForm>(blank), [loading, setLoading] = useState(true), [saving, setSaving] = useState(false), [error, setError] = useState(''), [notice, setNotice] = useState('');
   const [tab, setTab] = useState<'daily'|'deep-work'>('deep-work');
+  const [mode, setMode] = useState<'choose'|'manual'|'speech'>('choose');
+  const [transcript, setTranscript] = useState('');
+  const [parsedSummary, setParsedSummary] = useState<string[]>([]);
   async function load() { setLoading(true); try { const data = await apiRequest<unknown>('/api/habits'); if (!Array.isArray(data)) throw new Error('The API returned an invalid habit log.'); setEntries(data as Habit[]); setError(''); } catch (e) { setEntries([]); setError(e instanceof Error ? e.message : 'Could not load habit logs.'); } finally { setLoading(false); } }
   useEffect(() => { void load(); }, []);
   const summary = useMemo(() => {
@@ -20,33 +46,77 @@ export default function FocusHabitTracker() {
     return { groups, maxRate };
   }, [entries]);
   function change<K extends keyof HabitForm>(key: K, value: HabitForm[K]) { setForm((current) => ({ ...current, [key]: value })); }
-  async function submit(event: FormEvent) { event.preventDefault(); setSaving(true); setNotice(''); setError(''); try { const data = await apiRequest<Habit>('/api/habits', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) }); if (!data || typeof data.id !== 'number') throw new Error('Could not verify that this log was saved.'); setEntries((current) => [data, ...current]); setForm(blank()); setNotice('Habit log saved to this device.'); } catch (e) { setError(e instanceof Error ? e.message : 'Could not save this log.'); } finally { setSaving(false); } }
+  async function submit(event: FormEvent) { event.preventDefault(); setSaving(true); setNotice(''); setError(''); try { const data = await apiRequest<Habit>('/api/habits', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) }); if (!data || typeof data.id !== 'number') throw new Error('Could not verify that this log was saved.'); setEntries((current) => [data, ...current]); setForm(blank()); setNotice('Habit log saved to this device.'); setMode('choose'); setTranscript(''); setParsedSummary([]); } catch (e) { setError(e instanceof Error ? e.message : 'Could not save this log.'); } finally { setSaving(false); } }
   async function remove(id: number) { try { await apiRequest(`/api/habits/${id}`, { method: 'DELETE' }); setEntries((current) => current.filter((entry) => entry.id !== id)); setNotice('Entry deleted.'); } catch (e) { setError(e instanceof Error ? e.message : 'Could not delete this entry.'); } }
+  const appendTranscript = (text: string) => setTranscript((prev) => (prev.trim() ? `${prev.trim()} ${text}` : text));
+  function backToChoose() { setMode('choose'); setTranscript(''); setParsedSummary([]); setError(''); setNotice(''); }
+  // Auto-fill the daily-log fields from the transcript whenever it changes (speech mode).
+  useEffect(() => {
+    if (mode !== 'speech' || !transcript.trim()) return;
+    const parsed = parseHabitTranscript(transcript);
+    const filled: string[] = [];
+    setForm((current) => {
+      const next = { ...current };
+      if (parsed.screenTimeMinutes !== undefined) next.screenTimeMinutes = parsed.screenTimeMinutes;
+      if (parsed.distractingAppMinutes !== undefined) next.distractingAppMinutes = Math.min(parsed.distractingAppMinutes, next.screenTimeMinutes);
+      if (parsed.focusSessionsStarted !== undefined) next.focusSessionsStarted = parsed.focusSessionsStarted;
+      if (parsed.focusSessionsCompleted !== undefined) next.focusSessionsCompleted = Math.min(parsed.focusSessionsCompleted, next.focusSessionsStarted);
+      if (parsed.phoneEnvironment !== undefined) next.phoneEnvironment = parsed.phoneEnvironment;
+      if (parsed.studyInterruptCount !== undefined) next.studyInterruptCount = parsed.studyInterruptCount;
+      next.notes = transcript.trim().slice(0, 500);
+      return next;
+    });
+    if (parsed.screenTimeMinutes !== undefined) filled.push(`Screen time: ${parsed.screenTimeMinutes} min`);
+    if (parsed.distractingAppMinutes !== undefined) filled.push(`Distracting apps: ${parsed.distractingAppMinutes} min`);
+    if (parsed.focusSessionsStarted !== undefined) filled.push(`Focus sessions started: ${parsed.focusSessionsStarted}`);
+    if (parsed.focusSessionsCompleted !== undefined) filled.push(`Focus sessions completed: ${parsed.focusSessionsCompleted}`);
+    if (parsed.phoneEnvironment !== undefined) filled.push(`Phone: ${parsed.phoneEnvironment}`);
+    if (parsed.studyInterruptCount !== undefined) filled.push(`Interruptions: ${parsed.studyInterruptCount}`);
+    setParsedSummary(filled);
+  }, [transcript, mode]);
+  const habitForm = <form className="panel focus-habit-form" onSubmit={submit}>
+    <div className="panel-head"><div><span className="focus-habit-kicker"><Smartphone size={13}/> DAILY HABIT LOG</span><h2>Capture your focus context</h2><p>Record what your day looked like alongside task sessions.</p></div></div>
+    {mode === 'speech' && parsedSummary.length > 0 && <div className="context-message success" role="status"><Check size={15}/> Auto-filled from your recording: {parsedSummary.join(' · ')}</div>}
+    <label className="habit-field">Log date<input type="date" value={form.date} onChange={(e) => change('date', e.target.value)} required/></label>
+    <label className="habit-field">Total screen time <b>{form.screenTimeMinutes} min</b><input type="range" min="0" max="900" step="15" value={form.screenTimeMinutes} onChange={(e) => { const value = Number(e.target.value); setForm((current) => ({ ...current, screenTimeMinutes: value, distractingAppMinutes: Math.min(value, current.distractingAppMinutes) })); }}/></label>
+    <label className="habit-field">Distracting app use <b>{form.distractingAppMinutes} min</b><input type="range" min="0" max={Math.min(360, form.screenTimeMinutes)} step="5" value={Math.min(form.distractingAppMinutes, form.screenTimeMinutes)} onChange={(e) => change('distractingAppMinutes', Number(e.target.value))}/></label>
+    <div className="habit-number-grid"><label className="habit-field">Focus sessions started<input type="number" min="0" max="100" value={form.focusSessionsStarted} onChange={(e) => { const value = Number(e.target.value); setForm((current) => ({ ...current, focusSessionsStarted: value, focusSessionsCompleted: Math.min(value, current.focusSessionsCompleted) })); }}/></label><label className="habit-field">Completed<input type="number" min="0" max={form.focusSessionsStarted} value={form.focusSessionsCompleted} onChange={(e) => change('focusSessionsCompleted', Number(e.target.value))}/></label></div>
+    <label className="habit-field">Phone placement<select value={form.phoneEnvironment} onChange={(e) => change('phoneEnvironment', e.target.value)}>{environments.map((place) => <option key={place}>{place}</option>)}</select></label>
+    <label className="habit-field">Study interruptions<input type="number" min="0" max="500" value={form.studyInterruptCount} onChange={(e) => change('studyInterruptCount', Number(e.target.value))}/></label>
+    <label className="habit-field">Notes (optional)<div className="voice-input-row"><textarea maxLength={500} rows={3} value={form.notes} onChange={(e) => change('notes', e.target.value)} placeholder="What else shaped your focus today?"/>{mode === 'manual' ? null : <VoiceInputButton label="Dictate daily log" onTranscript={appendTranscript} />}</div></label>
+    {error && <p className="habit-message error" role="alert">{error}</p>}{notice && <p className="habit-message" role="status"><Check size={14}/>{notice}</p>}
+    <button className="primary habit-submit" disabled={saving}>{saving ? 'Saving…' : 'Save daily log'} <span>→</span></button>
+  </form>;
+  const impactCard = <section className="panel focus-impact-card">
+    <div className="panel-head"><div><span className="focus-habit-kicker"><Activity size={13}/> VISUAL IMPACT</span><h2>Focus completion by phone placement</h2><p>Logged completed sessions ÷ started sessions, grouped by recorded environment.</p></div></div>
+    {entries.length ? <div className="habit-bars">{summary.groups.map((group) => { const rate = group.started ? group.completed / group.started : 0; return <div className="habit-bar-row" key={group.environment}><div><span>{group.environment}</span><b>{group.started ? `${Math.round(rate * 100)}%` : '—'}</b></div><div className="habit-bar-track"><i style={{ width: `${Math.round(rate / summary.maxRate * 100)}%` }}/></div><small>{group.rows} {group.rows === 1 ? 'day' : 'days'} · {group.completed}/{group.started} sessions</small></div>; })}</div> : <div className="habit-empty"><Smartphone size={23}/><b>Your first log will start this comparison.</b><span>Comparisons summarize recorded entries only.</span></div>}
+    <div className="habit-integrity"><b>Behavioral context, not biology</b><span>These comparisons describe associations in your own logs. They do not establish cause, diagnose a condition, or measure dopamine or other biological changes.</span></div>
+  </section>;
+  const history = <section className="panel habit-history"><div className="panel-head"><div><span className="focus-habit-kicker"><Clock3 size={13}/> YOUR RECORDS</span><h2>Habit timeline</h2><p>{entries.length} saved {entries.length === 1 ? 'entry' : 'entries'} on this device.</p></div></div>
+    {loading ? <div className="habit-empty">Loading your entries…</div> : entries.length ? <div className="habit-entry-list">{entries.map((entry) => <article className="habit-entry" key={entry.id}><div className="habit-entry-date"><b>{formatDate(entry.date)}</b><button className="context-delete" aria-label={`Delete ${entry.date} habit entry`} onClick={() => void remove(entry.id)}><Trash2 size={15}/></button></div><div className="habit-metrics"><span><b>{entry.focusSessionsCompleted}/{entry.focusSessionsStarted}</b> focus sessions</span><span><b>{entry.phoneEnvironment}</b></span><span><b>{entry.screenTimeMinutes} min</b> screen</span><span><b>{entry.distractingAppMinutes} min</b> distracting apps</span><span><b>{entry.studyInterruptCount}</b> interruptions</span></div>{entry.notes && <p className="habit-note">{entry.notes}</p>}</article>)}</div> : <div className="habit-empty"><b>No habit logs yet</b><span>Save a daily entry to begin building your personal timeline.</span></div>}
+  </section>;
   return <div className="focus-habit-module">
     <div className="focus-habit-tabs" role="tablist" aria-label="Focus tools"><button role="tab" aria-selected={tab==='daily'} className={tab==='daily'?'active':''} onClick={()=>setTab('daily')}><Smartphone size={15}/> Daily habits</button><button role="tab" aria-selected={tab==='deep-work'} className={tab==='deep-work'?'active':''} onClick={()=>setTab('deep-work')}><Timer size={15}/> Deep Work & Audio</button></div>
-    {tab==='deep-work' ? <DeepWorkFocus/> : <>
-    <div className="focus-habit-grid">
-      <form className="panel focus-habit-form" onSubmit={submit}>
+    {tab==='deep-work' ? <DeepWorkFocus/> : mode==='choose' ? <>
+      <section className="panel focus-habit-form">
         <div className="panel-head"><div><span className="focus-habit-kicker"><Smartphone size={13}/> DAILY HABIT LOG</span><h2>Capture your focus context</h2><p>Record what your day looked like alongside task sessions.</p></div></div>
-        <label className="habit-field">Log date<input type="date" value={form.date} onChange={(e) => change('date', e.target.value)} required/></label>
-        <label className="habit-field">Total screen time <b>{form.screenTimeMinutes} min</b><input type="range" min="0" max="900" step="15" value={form.screenTimeMinutes} onChange={(e) => { const value = Number(e.target.value); setForm((current) => ({ ...current, screenTimeMinutes: value, distractingAppMinutes: Math.min(value, current.distractingAppMinutes) })); }}/></label>
-        <label className="habit-field">Distracting app use <b>{form.distractingAppMinutes} min</b><input type="range" min="0" max={Math.min(360, form.screenTimeMinutes)} step="5" value={Math.min(form.distractingAppMinutes, form.screenTimeMinutes)} onChange={(e) => change('distractingAppMinutes', Number(e.target.value))}/></label>
-        <div className="habit-number-grid"><label className="habit-field">Focus sessions started<input type="number" min="0" max="100" value={form.focusSessionsStarted} onChange={(e) => { const value = Number(e.target.value); setForm((current) => ({ ...current, focusSessionsStarted: value, focusSessionsCompleted: Math.min(value, current.focusSessionsCompleted) })); }}/></label><label className="habit-field">Completed<input type="number" min="0" max={form.focusSessionsStarted} value={form.focusSessionsCompleted} onChange={(e) => change('focusSessionsCompleted', Number(e.target.value))}/></label></div>
-        <label className="habit-field">Phone placement<select value={form.phoneEnvironment} onChange={(e) => change('phoneEnvironment', e.target.value)}>{environments.map((place) => <option key={place}>{place}</option>)}</select></label>
-        <label className="habit-field">Study interruptions<input type="number" min="0" max="500" value={form.studyInterruptCount} onChange={(e) => change('studyInterruptCount', Number(e.target.value))}/></label>
-        <label className="habit-field">Notes (optional)<textarea maxLength={500} rows={3} value={form.notes} onChange={(e) => change('notes', e.target.value)} placeholder="What else shaped your focus today?"/></label>
-        {error && <p className="habit-message error" role="alert">{error}</p>}{notice && <p className="habit-message" role="status"><Check size={14}/>{notice}</p>}
-        <button className="primary habit-submit" disabled={saving}>{saving ? 'Saving…' : 'Save daily log'} <span>→</span></button>
-      </form>
-      <section className="panel focus-impact-card">
-        <div className="panel-head"><div><span className="focus-habit-kicker"><Activity size={13}/> VISUAL IMPACT</span><h2>Focus completion by phone placement</h2><p>Logged completed sessions ÷ started sessions, grouped by recorded environment.</p></div></div>
-        {entries.length ? <div className="habit-bars">{summary.groups.map((group) => { const rate = group.started ? group.completed / group.started : 0; return <div className="habit-bar-row" key={group.environment}><div><span>{group.environment}</span><b>{group.started ? `${Math.round(rate * 100)}%` : '—'}</b></div><div className="habit-bar-track"><i style={{ width: `${Math.round(rate / summary.maxRate * 100)}%` }}/></div><small>{group.rows} {group.rows === 1 ? 'day' : 'days'} · {group.completed}/{group.started} sessions</small></div>; })}</div> : <div className="habit-empty"><Smartphone size={23}/><b>Your first log will start this comparison.</b><span>Comparisons summarize recorded entries only.</span></div>}
-        <div className="habit-integrity"><b>Behavioral context, not biology</b><span>These comparisons describe associations in your own logs. They do not establish cause, diagnose a condition, or measure dopamine or other biological changes.</span></div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 16 }}>
+          <button type="button" className="primary" style={{ minHeight: 120, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8 }} onClick={() => setMode('speech')}><Mic size={28}/><strong>Text input</strong><small>Record your day by voice; we auto-fill the fields</small></button>
+          <button type="button" className="secondary" style={{ minHeight: 120, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8 }} onClick={() => setMode('manual')}><Pencil size={28}/><strong>Manual input</strong><small>Enter each field by hand</small></button>
+        </div>
       </section>
-    </div>
-    <section className="panel habit-history"><div className="panel-head"><div><span className="focus-habit-kicker"><Clock3 size={13}/> YOUR RECORDS</span><h2>Habit timeline</h2><p>{entries.length} saved {entries.length === 1 ? 'entry' : 'entries'} on this device.</p></div></div>
-      {loading ? <div className="habit-empty">Loading your entries…</div> : entries.length ? <div className="habit-entry-list">{entries.map((entry) => <article className="habit-entry" key={entry.id}><div className="habit-entry-date"><b>{formatDate(entry.date)}</b><button className="context-delete" aria-label={`Delete ${entry.date} habit entry`} onClick={() => void remove(entry.id)}><Trash2 size={15}/></button></div><div className="habit-metrics"><span><b>{entry.focusSessionsCompleted}/{entry.focusSessionsStarted}</b> focus sessions</span><span><b>{entry.phoneEnvironment}</b></span><span><b>{entry.screenTimeMinutes} min</b> screen</span><span><b>{entry.distractingAppMinutes} min</b> distracting apps</span><span><b>{entry.studyInterruptCount}</b> interruptions</span></div>{entry.notes && <p className="habit-note">{entry.notes}</p>}</article>)}</div> : <div className="habit-empty"><b>No habit logs yet</b><span>Save a daily entry to begin building your personal timeline.</span></div>}
-    </section>
+      {impactCard}
+      {history}
+    </> : <>
+      <div style={{ marginBottom: 12 }}><button className="secondary" type="button" onClick={backToChoose}><X size={14}/> Back</button></div>
+      {mode==='speech' && <section className="panel focus-habit-form">
+        <div className="panel-head"><div><span className="focus-habit-kicker"><Mic size={13}/> VOICE DAILY LOG</span><h2>Record by voice</h2><p>Tap dictate, speak your day, and we’ll auto-fill the fields.</p></div></div>
+        <div style={{ margin: '12px 0' }}><VoiceInputButton label="Dictate" onTranscript={appendTranscript} /></div>
+        <label className="habit-field">Transcription <small>Review &amp; edit</small><textarea rows={4} maxLength={2000} value={transcript} onChange={(e) => setTranscript(e.target.value)} placeholder="Your recording will appear here…" /></label>
+        {parsedSummary.length > 0 && <div className="context-message success" role="status"><Check size={15}/> Auto-filled: {parsedSummary.join(' · ')}</div>}
+      </section>}
+      <div className="focus-habit-grid">{habitForm}{impactCard}</div>
+      {history}
     </>}
   </div>;
 }
