@@ -111,11 +111,20 @@ app.disable('x-powered-by');
 // Trust that first hop so rate limiting keys on the real client IP instead of
 // the proxy's address. Local development is unaffected.
 app.set('trust proxy', 1);
-const corsOrigins = (process.env.CORS_ORIGIN ?? 'http://localhost:5173,http://127.0.0.1:5173')
+// CORS_ORIGIN is a comma-separated allow-list. When it is not set, production
+// reflects the requesting origin (this demo has no auth or cookies) so a
+// frontend hosted on a separate Render static-site domain can call the API.
+// Development keeps the Vite origins.
+const configuredCorsOrigins = (process.env.CORS_ORIGIN ?? '')
   .split(',')
   .map((origin) => origin.trim())
   .filter(Boolean);
-app.use(cors({ origin: corsOrigins }));
+const corsOrigin = configuredCorsOrigins.length
+  ? configuredCorsOrigins
+  : process.env.NODE_ENV === 'production'
+    ? true
+    : ['http://localhost:5173', 'http://127.0.0.1:5173'];
+app.use(cors({ origin: corsOrigin }));
 app.use(express.json({ limit: '20kb' }));
 app.use('/api', rateLimit({ windowMs: 60_000, limit: 60, standardHeaders: 'draft-7', legacyHeaders: false }));
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
