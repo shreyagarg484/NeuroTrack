@@ -70,6 +70,7 @@ import { apiRequest } from './services/api';
 import StaggeredMenu from './components/react-bits/StaggeredMenu';
 import {
   AnimatedNumber,
+  ClickSparkle,
   CursorGlow,
   GlowCard,
   GlideField,
@@ -729,12 +730,14 @@ export default function App() {
                   <p>
                     Small signals become meaningful patterns. Take a few minutes to see how your mind is moving today.
                   </p>
-                  <SpecularCta
-                    onClick={() => setPage('Testing lab')}
-                    ariaLabel="Start today's check-in"
-                  >
-                    Start today&apos;s check-in <ArrowRight size={16} />
-                  </SpecularCta>
+                  <ClickSparkle>
+                    <SpecularCta
+                      onClick={() => setPage('Testing lab')}
+                      ariaLabel="Start today's check-in"
+                    >
+                      Start today&apos;s check-in <ArrowRight size={16} />
+                    </SpecularCta>
+                  </ClickSparkle>
                 </div>
                 <NeuralGraphic />
                 <div className="hero-note">

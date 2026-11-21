@@ -196,18 +196,28 @@ export default function Sidebar({
           <CircleHelp size={15} /> Local Demo & Privacy
         </button>
 
-        <div
-          className="profile-chip"
-          onClick={() => handleNav('Settings')}
-          title="Open settings"
-        >
-          <div className="avatar">{initials}</div>
-          <div>
-            <strong>{userName}</strong>
-            <span>Personal space</span>
+        <Magnetic strength={0.08} className="nt-profile-magnetic">
+          <div
+            className="profile-chip"
+            onClick={() => handleNav('Settings')}
+            title="Open settings"
+            role="button"
+            tabIndex={0}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                handleNav('Settings');
+              }
+            }}
+          >
+            <div className="avatar">{initials}</div>
+            <div>
+              <strong>{userName}</strong>
+              <span>Personal space</span>
+            </div>
+            <MoreHorizontal size={16} className="muted-icon" />
           </div>
-          <MoreHorizontal size={16} className="muted-icon" />
-        </div>
+        </Magnetic>
       </div>
     </aside>
   );
