@@ -122,16 +122,16 @@ function getChartPlans(rows: Session[], task: TaskFilter): ChartPlan[] {
 
 const PIE_COLORS: Record<TaskFilter, string> = {
   all: '#64172F',
-  'n-back': '#64172F',           // deep burgundy
-  'simple-reaction': '#47745E',  // sage green
-  'choice-reaction': '#397C78',  // muted teal
-  stroop: '#A65D76',             // dusty rose
-  'go-no-go': '#B77B55',         // warm terracotta
-  'digit-span': '#C18B13',       // muted mustard
-  'corsi-spatial': '#536B80',    // slate blue
-  'visual-search': '#805348',    // cocoa brown
-  'time-perception': '#91647D',  // soft mauve
-  'trail-making': '#82947A',     // olive green
+  'n-back': '#64172F',           // Burgundy
+  'simple-reaction': '#501225',  // Deep wine
+  'choice-reaction': '#47745E',  // Sage
+  stroop: '#A65D76',             // Dusty rose
+  'go-no-go': '#B77B55',         // Terracotta
+  'digit-span': '#C18B13',       // Muted mustard
+  'corsi-spatial': '#536B80',    // Slate blue
+  'visual-search': '#397C78',    // Teal
+  'time-perception': '#91647D',  // Mauve
+  'trail-making': '#805348',     // Cocoa
 };
 
 const allCognitiveTests: TaskFilter[] = [
@@ -203,9 +203,7 @@ function PieChartCard({
                 nameKey="name"
                 cx="50%"
                 cy="50%"
-                innerRadius={55}
-                outerRadius={88}
-                paddingAngle={3}
+                outerRadius={95}
                 stroke="#F6F0E7"
                 strokeWidth={2}
               >
