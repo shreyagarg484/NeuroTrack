@@ -35,7 +35,7 @@ import {
   X,
   Zap,
 } from 'lucide-react';
-import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Area, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 import Sidebar from './components/Sidebar';
 import MetricCard from './components/ui/MetricCard';
@@ -232,18 +232,70 @@ export default function App() {
   const actualSessions = useMemo(() => sessions.filter((session) => !Boolean(session.isSynthetic)), [sessions]);
   const nbackSessions = useMemo(() => sessions.filter((session) => !session.taskType), [sessions]);
   const latest = nbackSessions[0] || sessions[0];
-  const trend = useMemo(
-    () =>
-      nbackSessions
-        .slice(0, 8)
-        .reverse()
-        .map((s) => ({
-          day: new Date(s.createdAt).toLocaleDateString(undefined, { weekday: 'short' }),
-          accuracy: s.accuracy,
-          rt: s.medianRt,
-        })),
-    [nbackSessions]
-  );
+  const [overviewRange, setOverviewRange] = useState<'weekly' | 'monthly'>('weekly');
+
+  const personalAverage = useMemo(() => {
+    if (!actualSessions.length) return 0;
+    const sum = actualSessions.reduce((acc, s) => acc + (s.accuracy || 0), 0);
+    return Math.round(sum / actualSessions.length);
+  }, [actualSessions]);
+
+  const overviewTrend = useMemo(() => {
+    if (!actualSessions.length) return [];
+    const sorted = [...actualSessions].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    const cutoff = overviewRange === 'weekly' ? Date.now() - 7 * 86_400_000 : Date.now() - 30 * 86_400_000;
+    let inRange = sorted.filter((s) => {
+      const t = Date.parse(s.createdAt);
+      return !Number.isNaN(t) && t >= cutoff;
+    });
+
+    if (inRange.length === 0) {
+      inRange = sorted.slice(-(overviewRange === 'weekly' ? 7 : 30));
+    }
+
+    const taskNames: Record<string, string> = {
+      'simple-reaction': 'Reaction Time',
+      'choice-reaction': 'Choice Reaction',
+      stroop: 'Stroop Task',
+      'go-no-go': 'Go / No-Go',
+      'digit-span': 'Digit Span',
+      'corsi-spatial': 'Corsi Spatial',
+      'visual-search': 'Visual Search',
+      'time-perception': 'Time Perception',
+      'trail-making': 'Trail Making',
+    };
+
+    return inRange.map((s) => {
+      const d = new Date(s.createdAt);
+      const dayLabel = Number.isNaN(d.getTime())
+        ? s.createdAt.slice(5, 10)
+        : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      const fullDate = Number.isNaN(d.getTime())
+        ? s.createdAt
+        : d.toLocaleDateString(undefined, {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+          });
+
+      return {
+        id: s.id,
+        day: dayLabel,
+        fullDate,
+        accuracy: Math.round(s.accuracy),
+        medianRt: s.medianRt,
+        personalAverage,
+        task: s.taskType ? taskNames[s.taskType] || s.taskType : 'N-back',
+      };
+    });
+  }, [actualSessions, overviewRange, personalAverage]);
+
+  const trendImprovement = useMemo(() => {
+    if (overviewTrend.length < 2) return null;
+    return overviewTrend[overviewTrend.length - 1].accuracy - overviewTrend[0].accuracy;
+  }, [overviewTrend]);
 
   const percent = results.length ? Math.round((results.filter((x) => x.correct).length / results.length) * 100) : 0;
   const progressPct = practiceMode
