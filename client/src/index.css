@@ -555,47 +555,116 @@ h1, h2, h3,
   margin-bottom: 22px;
 }
 .metric-card {
-  min-height: 140px;
-  padding: 18px 20px 16px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  position: relative;
+  min-height: 144px;
+  padding: 20px 22px 18px;
+  border: 1px solid rgba(255, 235, 235, 0.16);
+  border-radius: 12px;
+  background: linear-gradient(142deg, #64172F 0%, #501225 52%, #380C19 100%);
+  box-shadow: 
+    0 10px 28px -6px rgba(56, 12, 25, 0.45),
+    0 4px 12px rgba(80, 18, 37, 0.28),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -1px 2px 0 rgba(0, 0, 0, 0.3);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  overflow: hidden;
+  backdrop-filter: blur(8px);
 }
+
+/* Subtle reflective glass highlight across top half */
+.metric-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 48%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.03) 75%, rgba(255, 255, 255, 0) 100%);
+  border-radius: 11px 11px 40% 40% / 11px 11px 16px 16px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Very subtle inner ambient glow */
+.metric-card::after {
+  content: '';
+  position: absolute;
+  top: -30px;
+  right: -30px;
+  width: 130px;
+  height: 130px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(200, 75, 105, 0.18) 0%, rgba(100, 23, 47, 0) 70%);
+  pointer-events: none;
+  z-index: 1;
+}
+
 .metric-card:hover {
-  box-shadow: var(--shadow);
-  transform: translateY(-2px);
+  transform: translateY(-3px);
+  border-color: rgba(255, 235, 235, 0.32);
+  box-shadow: 
+    0 16px 36px -6px rgba(56, 12, 25, 0.6),
+    0 8px 20px rgba(100, 23, 47, 0.35),
+    inset 0 1px 2px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -1px 2px 0 rgba(0, 0, 0, 0.25);
 }
-.metric-accent { background: #ead9c6; border-color: #d8c3ad; }
+
+/* Streak card subtle glowing accent */
+.metric-accent {
+  background: linear-gradient(142deg, #721935 0%, #541327 50%, #3a0d1a 100%);
+  border-color: rgba(255, 225, 225, 0.24);
+}
+.metric-accent::after {
+  background: radial-gradient(circle, rgba(255, 145, 170, 0.25) 0%, rgba(114, 25, 53, 0) 75%);
+  width: 150px;
+  height: 150px;
+}
+
 .metric-top {
+  position: relative;
+  z-index: 2;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  color: #6f6259;
-  font-size: 12px;
+  color: #F8EFE6; /* Warm ivory */
+  font-size: 12.5px;
   font-weight: 600;
+  letter-spacing: 0.2px;
 }
 .metric-top span { display: flex; align-items: center; gap: 8px; }
-.metric-top svg { color: var(--burgundy); }
+.metric-top svg {
+  color: #F3C4CE; /* Soft rose / ivory */
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.3));
+}
+
 .metric-value {
-  margin: 12px 0 8px;
-  color: var(--burgundy-deep);
-  font-size: clamp(28px, 2.6vw, 36px);
+  position: relative;
+  z-index: 2;
+  margin: 10px 0 6px;
+  color: #FFFFFF; /* Crisp white / warm ivory */
+  font-size: clamp(30px, 2.7vw, 38px);
   font-weight: 700;
   line-height: 1;
   font-family: var(--font-display);
+  letter-spacing: -0.5px;
+  text-shadow: 0 2px 8px rgba(30, 5, 12, 0.45);
 }
 .metric-value small {
-  color: var(--muted);
+  color: #E2C2C9; /* Soft rose */
   font-size: 13px;
   font-weight: 500;
   font-family: var(--font-body);
-  margin-left: 4px;
+  margin-left: 5px;
+  letter-spacing: 0;
+  text-shadow: none;
 }
+
 .metric-bottom {
+  position: relative;
+  z-index: 2;
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
@@ -603,21 +672,27 @@ h1, h2, h3,
 }
 .metric-bottom strong {
   display: block;
-  color: var(--green);
+  color: #79B896; /* Subtle sage-green with high contrast on dark burgundy */
   font-size: 12px;
   font-weight: 700;
+  letter-spacing: 0.2px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
-.metric-bottom span { color: var(--muted); font-size: 11px; }
+.metric-bottom span {
+  color: #D6BAC0; /* Muted rose / light beige */
+  font-size: 11px;
+}
 
 .sparkline {
   width: 88px;
   height: 32px;
   fill: none;
-  stroke: var(--burgundy);
-  stroke-width: 2;
+  stroke: #E89EAE; /* Subtle burgundy-toned rose highlight */
+  stroke-width: 2.2;
   stroke-linecap: round;
   stroke-linejoin: round;
-  opacity: 0.85;
+  opacity: 0.9;
+  filter: drop-shadow(0 2px 4px rgba(40, 5, 15, 0.5));
 }
 
 /* ==========================================================================
