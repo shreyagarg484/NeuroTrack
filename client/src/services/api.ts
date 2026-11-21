@@ -1,30 +1,14 @@
 const configuredApiBase = ((import.meta.env.VITE_API_URL as string | undefined)?.trim() || '').replace(/\/+$/, '');
 
-/** Resolve the backend origin. VITE_API_URL wins when set (recommended for a
- * split deployment). When it is empty the app calls the same origin, so a
- * single deployed backend serves both the API and the built frontend. Local
- * development keeps working because Vite proxies /api to port 3001.
- *
- * A Render static site is named like "neurotrack-frontend-<suffix>.onrender.com"
- * while its API web service is "neurotrack.onrender.com". If no VITE_API_URL was
- * supplied at build time, infer the API host from that naming convention so the
- * separately deployed frontend reaches the backend instead of calling /api on
- * the static host (which returns a 404 HTML page and causes JSON errors).
+/** VITE_API_URL is the backend origin (for example, https://api.example.com).
+ * When it is empty the app calls the same origin, so a single deployed backend
+ * serves both the API and the built frontend. Local development keeps working
+ * because Vite proxies /api to the Express server on port 3001. The production
+ * build reads it from client/.env.production.
  */
-function resolveApiBase(): string {
-  if (configuredApiBase) return configuredApiBase;
-  if (typeof window === 'undefined') return '';
-  const host = window.location.hostname.toLowerCase();
-  const match = host.match(/^(.+?)-frontend(?:-[a-z0-9]+)?\.onrender\.com$/);
-  if (match) return `${window.location.protocol}//${match[1]}.onrender.com`;
-  return '';
-}
-
-const apiBase = resolveApiBase();
-
 export function apiUrl(path: string): string {
   const apiPath = path.startsWith('/') ? path : `/${path}`;
-  return `${apiBase}${apiPath}`;
+  return `${configuredApiBase}${apiPath}`;
 }
 
 async function errorMessage(response: Response): Promise<string> {
