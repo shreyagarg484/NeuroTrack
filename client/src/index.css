@@ -2163,18 +2163,34 @@ input, select, textarea {
   gap: 16px;
   margin: 18px 0 28px;
 }
+@keyframes cognitive-card-entrance {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 .test-library-card {
   padding: 22px;
   background: linear-gradient(150deg, #FDF9F5 0%, #F3E7D9 100%);
   border: 1px solid rgba(100, 23, 47, 0.15);
   border-radius: 12px;
   text-align: left;
-  transition: all 0.25s ease;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.25s ease,
+              background 0.25s ease;
   display: flex;
   flex-direction: column;
   gap: 9px;
   box-shadow: 0 4px 14px -3px rgba(80, 18, 37, 0.05), 0 2px 6px -1px rgba(80, 18, 37, 0.03);
   position: relative;
+  animation: cognitive-card-entrance 0.5s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  animation-delay: calc(var(--card-index, 0) * 50ms);
+  will-change: transform, box-shadow;
 }
 .test-library-card:nth-child(even) {
   background: linear-gradient(150deg, #F5ECE0 0%, #E9D8C5 100%);
@@ -2184,9 +2200,15 @@ input, select, textarea {
 }
 .test-library-card:hover {
   background: linear-gradient(150deg, #FFF9F2 0%, #F5EBE0 100%);
-  border-color: rgba(100, 23, 47, 0.28);
-  box-shadow: 0 10px 24px -4px rgba(80, 18, 37, 0.12), 0 4px 8px -2px rgba(80, 18, 37, 0.06);
-  transform: translateY(-2px);
+  border-color: rgba(100, 23, 47, 0.35);
+  box-shadow: 0 16px 32px -4px rgba(80, 18, 37, 0.14),
+              0 6px 14px -2px rgba(80, 18, 37, 0.08),
+              inset 0 0 0 1px rgba(233, 216, 197, 0.4);
+  transform: translateY(-5px);
+}
+.test-library-card:active {
+  transform: translateY(-2px) scale(0.995);
+  transition-duration: 0.1s;
 }
 .test-library-top {
   display: flex;
@@ -2198,6 +2220,14 @@ input, select, textarea {
   font-size: 11px;
   font-family: var(--font-mono);
   font-weight: 500;
+}
+.test-library-card .task-chip {
+  transition: background 0.25s ease, border-color 0.25s ease, color 0.25s ease, box-shadow 0.25s ease;
+}
+.test-library-card:hover .task-chip {
+  background: #E3C2C6;
+  border-color: rgba(100, 23, 47, 0.28);
+  box-shadow: 0 2px 5px rgba(100, 23, 47, 0.08);
 }
 .test-library-card > b {
   font-size: 19px;
@@ -2224,12 +2254,27 @@ input, select, textarea {
   background: rgba(100, 23, 47, 0.06);
   border: 1px solid rgba(100, 23, 47, 0.15);
   align-self: flex-start;
-  transition: all 0.2s ease;
+  transition: background 0.22s ease,
+              color 0.22s ease,
+              border-color 0.22s ease,
+              transform 0.15s ease,
+              box-shadow 0.22s ease;
+}
+.test-library-card > i svg {
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .test-library-card:hover > i {
-  background: var(--burgundy);
+  background: var(--burgundy-deep);
   color: #FFF9F2;
-  border-color: var(--burgundy);
+  border-color: var(--burgundy-deep);
+  box-shadow: 0 3px 8px rgba(80, 18, 37, 0.2);
+}
+.test-library-card:hover > i svg {
+  transform: translateX(4px);
+}
+.test-library-card > i:active,
+.test-library-card:active > i {
+  transform: scale(0.97);
 }
 
 .task-purpose-card {
@@ -2298,6 +2343,187 @@ input, select, textarea {
   color: #9C827A;
   font-size: 9px;
   line-height: 1.35;
+}
+
+/* ==========================================================================
+   Cognitive Lab Artwork Micro-Animations & Motion Preferences
+   ========================================================================== */
+.purpose-art {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+/* Signal Wave & Pulse */
+@keyframes art-signal-pulse {
+  0%, 100% {
+    stroke-opacity: 0.82;
+    filter: drop-shadow(0 0 0 transparent);
+  }
+  50% {
+    stroke-opacity: 1;
+    filter: drop-shadow(0 0 3px rgba(183, 123, 133, 0.45));
+  }
+}
+.art-signal .art-signal-wave {
+  animation: art-signal-pulse 3s ease-in-out infinite;
+}
+.test-library-card:hover .art-signal .art-signal-wave {
+  animation-duration: 1.5s;
+}
+
+/* Battery Pulse & Charge */
+@keyframes art-battery-glow {
+  0%, 100% {
+    transform: scale(1);
+    stroke-opacity: 0.28;
+  }
+  50% {
+    transform: scale(1.08);
+    stroke-opacity: 0.6;
+  }
+}
+@keyframes art-battery-level-breathe {
+  0%, 100% {
+    fill-opacity: 0.72;
+  }
+  50% {
+    fill-opacity: 0.95;
+  }
+}
+.art-battery .art-battery-pulse {
+  transform-origin: 61px 44px;
+  animation: art-battery-glow 2.8s ease-in-out infinite;
+}
+.art-battery .art-battery-level {
+  animation: art-battery-level-breathe 2.8s ease-in-out infinite;
+}
+.test-library-card:hover .art-battery .art-battery-pulse {
+  animation-duration: 1.4s;
+}
+
+/* Network Nodes Breathing */
+@keyframes art-node-breathe {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+}
+.art-network .art-node {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: art-node-breathe 3.2s ease-in-out infinite;
+}
+.art-network .art-node-2,
+.art-network .art-node-5 {
+  animation-delay: 0.6s;
+}
+.art-network .art-node-3,
+.art-network .art-node-6 {
+  animation-delay: 1.2s;
+}
+.art-network .art-node-4,
+.art-network .art-node-7 {
+  animation-delay: 1.8s;
+}
+.test-library-card:hover .art-network .art-node {
+  animation-duration: 1.8s;
+}
+
+/* Visual Search Focus Ring */
+@keyframes art-search-focus-move {
+  0%, 100% {
+    transform: scale(1);
+    stroke: #64172F;
+  }
+  50% {
+    transform: scale(1.08);
+    stroke: #8A4057;
+  }
+}
+@keyframes art-search-halo-expand {
+  0%, 100% {
+    transform: scale(1);
+    stroke-opacity: 0.45;
+  }
+  50% {
+    transform: scale(1.12);
+    stroke-opacity: 0.75;
+  }
+}
+.art-search .art-search-focus {
+  transform-origin: 66px 58px;
+  animation: art-search-focus-move 2.6s ease-in-out infinite;
+}
+.art-search .art-search-halo {
+  transform-origin: 66px 58px;
+  animation: art-search-halo-expand 2.6s ease-in-out infinite;
+}
+.test-library-card:hover .art-search .art-search-halo {
+  animation-duration: 1.3s;
+}
+
+/* Path Flow Line */
+@keyframes art-path-flow {
+  to {
+    stroke-dashoffset: -18;
+  }
+}
+@keyframes art-path-arrow-nudge {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(2.5px);
+  }
+}
+.art-path .art-path-line {
+  animation: art-path-flow 3.5s linear infinite;
+}
+.art-path .art-path-arrow {
+  animation: art-path-arrow-nudge 2s ease-in-out infinite;
+}
+.art-path .art-path-dot {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: art-node-breathe 3s ease-in-out infinite;
+}
+.art-path .art-dot-2 { animation-delay: 0.5s; }
+.art-path .art-dot-3 { animation-delay: 1.0s; }
+.art-path .art-dot-4 { animation-delay: 1.5s; }
+.test-library-card:hover .art-path .art-path-line {
+  animation-duration: 2s;
+}
+
+/* Prefers Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  .test-library-card {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+  .test-library-card:hover {
+    transform: none !important;
+  }
+  .test-library-card > i,
+  .test-library-card > i svg {
+    transform: none !important;
+    transition: none !important;
+  }
+  .art-signal-wave,
+  .art-battery-pulse,
+  .art-battery-level,
+  .art-node,
+  .art-search-focus,
+  .art-search-halo,
+  .art-path-line,
+  .art-path-arrow,
+  .art-path-dot {
+    animation: none !important;
+    transform: none !important;
+  }
 }
 
 /* ==========================================================================

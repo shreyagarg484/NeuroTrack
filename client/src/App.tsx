@@ -1070,10 +1070,11 @@ export default function App() {
               </div>
 
               <section className="test-library">
-                {filteredTests.map((item) => (
+                {filteredTests.map((item, index) => (
                   <button
                     className="test-library-card"
                     key={item.page}
+                    style={{ '--card-index': index } as React.CSSProperties}
                     onClick={() =>
                       item.page === 'Testing lab'
                         ? document.getElementById('nback-task')?.scrollIntoView({ behavior: 'smooth' })
