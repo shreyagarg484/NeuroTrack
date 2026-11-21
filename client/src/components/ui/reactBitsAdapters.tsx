@@ -426,7 +426,7 @@ export function CursorGlow() {
       trailWidth={14}
       quality="low"
       maxDevicePixelRatio={1.5}
-      blendMode="source-over"
+      blendMode="normal"
       clickBurst={false}
       grain={0}
       enabled
