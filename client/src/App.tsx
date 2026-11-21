@@ -1474,14 +1474,7 @@ export default function App() {
           )}
 
           {page === 'Focus & Habits' && (
-            <>
-              <div className="page-heading">
-                <span className="eyebrow">PERSONAL FOCUS CONTEXT</span>
-                <h1>Build a clearer picture of your habits.</h1>
-                <p>Track focus sessions, screen use, interruptions, and where your phone was during the day.</p>
-              </div>
-              <FocusHabitTracker />
-            </>
+            <FocusHabitTracker />
           )}
 
           {page === 'Task Scheduler' && (

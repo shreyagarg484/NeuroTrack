@@ -95,7 +95,7 @@ export default function Sidebar({
           onClick={() => handleNav('Focus & Habits')}
         >
           <Timer size={17} />
-          <span>Focus & Habits</span>
+          <span>Focus &amp; Deep Work Tracker</span>
         </button>
         <button
           className={`nav-item ${active === 'Context Journal & Check-in' ? 'active' : ''}`}
