@@ -67,6 +67,16 @@ import {
   TaskPurposeCard,
 } from './components/tasks';
 import { apiRequest } from './services/api';
+import StaggeredMenu from './components/react-bits/StaggeredMenu';
+import {
+  AnimatedNumber,
+  CursorGlow,
+  GlowCard,
+  GlideField,
+  SectionReveal,
+  SpecularCta,
+  usePrefersReducedMotion,
+} from './components/ui/reactBitsAdapters';
 
 type Session = {
   id: number;
@@ -189,6 +199,8 @@ export default function App() {
   const [notifications, setNotifications] = useState(true);
   const [weeklySummary, setWeeklySummary] = useState(true);
   const [reducedMotion, setReducedMotion] = useState(false);
+  const [timezone, setTimezone] = useState('Local Timezone');
+  const prefersReducedMotion = usePrefersReducedMotion();
 
   const startRef = useRef(0);
   const seq = useRef<string[]>([]);
@@ -590,27 +602,56 @@ export default function App() {
   });
 
   return (
-    <div className={`app-shell ${reducedMotion ? 'reduced-motion' : ''}`}>
+    <div className={`app-shell ${reducedMotion || prefersReducedMotion ? 'reduced-motion' : ''}`}>
       <Sidebar
         active={page}
         onSelect={setPage}
-        open={mobile}
+        open={false}
         onClose={() => setMobile(false)}
         userName={userName}
         sessionCount={sessions.length}
         onSignOut={() => setStage('auth')}
       />
+      <CursorGlow />
+      <StaggeredMenu
+        className="nt-mobile-menu"
+        isFixed
+        position="right"
+        colors={['#64172F', '#47745E', '#B77B55']}
+        accentColor="#64172F"
+        menuButtonColor="#64172F"
+        openMenuButtonColor="#FBF7F1"
+        changeMenuColorOnOpen={false}
+        displaySocials={false}
+        displayItemNumbering={false}
+        closeOnClickAway
+        items={[
+          { label: 'Overview Dashboard', ariaLabel: 'Go to overview', link: '#Overview' },
+          { label: 'Cognitive Lab', ariaLabel: 'Go to cognitive lab', link: '#Testing lab' },
+          { label: 'Focus & Deep Work', ariaLabel: 'Go to focus tracker', link: '#Focus & Habits' },
+          { label: 'Context & Hydration', ariaLabel: 'Go to context journal', link: '#Context Journal & Check-in' },
+          { label: 'Task Scheduler', ariaLabel: 'Go to task scheduler', link: '#Task Scheduler' },
+          { label: 'Analytics & Trends', ariaLabel: 'Go to analytics', link: '#Analytics' },
+          { label: 'Insights Engine', ariaLabel: 'Go to insights', link: '#Insights' },
+        ]}
+        onItemClick={(label) => {
+          const target = ({
+            'Overview Dashboard': 'Overview',
+            'Cognitive Lab': 'Testing lab',
+            'Focus & Deep Work': 'Focus & Habits',
+            'Context & Hydration': 'Context Journal & Check-in',
+            'Analytics & Trends': 'Analytics',
+            'Insights Engine': 'Insights',
+          } as Record<string, string>)[label] || label;
+          setPage(target);
+          setMobile(false);
+        }}
+        onMenuOpen={() => setMobile(true)}
+        onMenuClose={() => setMobile(false)}
+      />
 
       <main className="main-content">
         <header className="topbar">
-          <button
-            className="mobile-menu"
-            onClick={() => setMobile(!mobile)}
-            aria-label="Toggle navigation"
-          >
-            <Menu size={21} />
-          </button>
-
           <div className="breadcrumb">
             <span>My space</span>
             <span className="breadcrumb-divider">/</span>
@@ -688,12 +729,12 @@ export default function App() {
                   <p>
                     Small signals become meaningful patterns. Take a few minutes to see how your mind is moving today.
                   </p>
-                  <button
-                    className="primary-button"
+                  <SpecularCta
                     onClick={() => setPage('Testing lab')}
+                    ariaLabel="Start today's check-in"
                   >
                     Start today&apos;s check-in <ArrowRight size={16} />
-                  </button>
+                  </SpecularCta>
                 </div>
                 <NeuralGraphic />
                 <div className="hero-note">
@@ -714,6 +755,7 @@ export default function App() {
                 </div>
               </section>
 
+              <SectionReveal delay={0.06}>
               <section className="metric-grid" aria-label="Key metrics">
                 <MetricCard
                   label="Focus score"
@@ -747,7 +789,9 @@ export default function App() {
                   onClick={() => setPage('Focus & Habits')}
                 />
               </section>
+              </SectionReveal>
 
+              <SectionReveal delay={0.12}>
               <div className="content-grid">
                 <section className="surface-panel trend-panel">
                   <div className="panel-heading">
@@ -956,8 +1000,10 @@ export default function App() {
                   </button>
                 </section>
               </div>
+              </SectionReveal>
 
               {insightNoteVisible && (
+                <GlowCard variant="border" glowColor="rgba(183, 123, 85, 0.3)" className="insight-glow">
                 <section className="insight-strip">
                   <div className="insight-icon">
                     <Sparkles size={18} />
@@ -977,11 +1023,16 @@ export default function App() {
                     <X size={16} />
                   </button>
                 </section>
+                </GlowCard>
               )}
 
-              <div className="overview-hydration">
-                <HydrationTracker />
-              </div>
+              <SectionReveal delay={0.18}>
+                <GlowCard variant="border" glowColor="rgba(71, 116, 94, 0.28)" className="hydration-glow">
+                  <div className="overview-hydration">
+                    <HydrationTracker />
+                  </div>
+                </GlowCard>
+              </SectionReveal>
 
               <div className="disclaimer">
                 <ShieldCheck size={15} />
@@ -1030,6 +1081,7 @@ export default function App() {
                 </button>
               </div>
 
+              <GlowCard variant="border" glowColor="rgba(100, 23, 47, 0.32)" className="assessment-glow">
               <section className="featured-assessment">
                 <div className="featured-icon">
                   <Gauge size={26} />
@@ -1050,16 +1102,17 @@ export default function App() {
                     </span>
                   </div>
                 </div>
-                <button
-                  className="primary-button"
+                <SpecularCta
                   onClick={() => {
-                    document.getElementById('nback-task')?.scrollIntoView({ behavior: 'smooth' });
+                    document.getElementById('nback-task')?.scrollIntoView({ behavior: prefersReducedMotion ? 'auto' : 'smooth' });
                     if (!running) begin();
                   }}
+                  ariaLabel="Begin check-in"
                 >
                   Begin check-in <ArrowRight size={16} />
-                </button>
+                </SpecularCta>
               </section>
+              </GlowCard>
 
               <div className="section-heading-row">
                 <div>
@@ -1110,30 +1163,28 @@ export default function App() {
                       <span className="task-chip">
                         <Brain size={15} /> N-BACK
                       </span>
-                      <span className="setting">
-                        <label>Difficulty</label>
-                        <select
-                          value={n}
-                          onChange={(e) => setN(Number(e.target.value))}
-                          disabled={running}
-                        >
-                          <option value={1}>1-back</option>
-                          <option value={2}>2-back</option>
-                          <option value={3}>3-back</option>
-                        </select>
-                      </span>
-                      <span className="setting">
-                        <label>Trials</label>
-                        <select
-                          value={total}
-                          onChange={(e) => setTotal(Number(e.target.value))}
-                          disabled={running}
-                        >
-                          <option value={12}>12</option>
-                          <option value={20}>20</option>
-                          <option value={30}>30</option>
-                        </select>
-                      </span>
+                      <GlideField
+                        label="Difficulty"
+                        value={String(n)}
+                        options={[
+                          { value: '1', label: '1-back' },
+                          { value: '2', label: '2-back' },
+                          { value: '3', label: '3-back' },
+                        ]}
+                        onChange={(value) => setN(Number(value))}
+                        disabled={running}
+                      />
+                      <GlideField
+                        label="Trials"
+                        value={String(total)}
+                        options={[
+                          { value: '12', label: '12 trials' },
+                          { value: '20', label: '20 trials' },
+                          { value: '30', label: '30 trials' },
+                        ]}
+                        onChange={(value) => setTotal(Number(value))}
+                        disabled={running}
+                      />
                     </div>
 
                     {running ? (
@@ -1227,9 +1278,9 @@ export default function App() {
                             <b>03</b> Results save to this local demo
                           </span>
                         </div>
-                        <button className="primary-button start-btn" onClick={begin}>
+                        <SpecularCta className="start-btn" onClick={begin} ariaLabel="Begin task">
                           <Play size={16} fill="currentColor" /> Begin task <span>· about 2 min</span>
-                        </button>
+                        </SpecularCta>
                       </div>
                     )}
 
@@ -1474,7 +1525,14 @@ export default function App() {
           )}
 
           {page === 'Focus & Habits' && (
-            <FocusHabitTracker />
+            <>
+              <div className="page-heading">
+                <span className="eyebrow">PERSONAL FOCUS &amp; HABITS</span>
+                <h1>Understand your focus, day by day.</h1>
+                <p>Log screen time, interruptions, and where your phone was, then look for patterns in your timeline.</p>
+              </div>
+              <FocusHabitTracker />
+            </>
           )}
 
           {page === 'Task Scheduler' && (
@@ -1568,30 +1626,36 @@ export default function App() {
               </section>
 
               <div className="insight-metric-grid">
-                <div className="insight-metric">
-                  <span className="panel-kicker">Morning focus</span>
-                  <strong>91</strong>
-                  <div>
-                    <span>your strongest window</span>
-                    <b>+12%</b>
+                <GlowCard glowColor="rgba(183, 123, 85, 0.2)">
+                  <div className="insight-metric">
+                    <span className="panel-kicker">Morning focus</span>
+                    <strong><AnimatedNumber value="91" /></strong>
+                    <div>
+                      <span>your strongest window</span>
+                      <b>+12%</b>
+                    </div>
                   </div>
-                </div>
-                <div className="insight-metric">
-                  <span className="panel-kicker">Recall precision</span>
-                  <strong>{latest ? `${latest.accuracy}%` : '78%'}</strong>
-                  <div>
-                    <span>steady over 30 days</span>
-                    <b>+4%</b>
+                </GlowCard>
+                <GlowCard glowColor="rgba(100, 23, 47, 0.18)">
+                  <div className="insight-metric">
+                    <span className="panel-kicker">Recall precision</span>
+                    <strong><AnimatedNumber value={latest ? `${latest.accuracy}` : '78'} />%</strong>
+                    <div>
+                      <span>steady over 30 days</span>
+                      <b>+4%</b>
+                    </div>
                   </div>
-                </div>
-                <div className="insight-metric">
-                  <span className="panel-kicker">Response latency</span>
-                  <strong>{rt ? `${rt}ms` : '580ms'}</strong>
-                  <div>
-                    <span>median reaction time</span>
-                    <b>-18ms</b>
+                </GlowCard>
+                <GlowCard glowColor="rgba(71, 116, 94, 0.22)">
+                  <div className="insight-metric">
+                    <span className="panel-kicker">Response latency</span>
+                    <strong><AnimatedNumber value={rt ? `${rt}` : '580'} />ms</strong>
+                    <div>
+                      <span>median reaction time</span>
+                      <b>-18ms</b>
+                    </div>
                   </div>
-                </div>
+                </GlowCard>
               </div>
 
               <div className="insights-lower">
@@ -1696,28 +1760,27 @@ export default function App() {
                           }}
                         />
                       </label>
-                      <label>
-                        Timezone
-                        <select defaultValue="Local Timezone">
-                          <option>Local Timezone</option>
-                          <option>Pacific Time (PT)</option>
-                          <option>Eastern Time (ET)</option>
-                          <option>UTC / GMT</option>
-                          <option>India Standard Time (IST)</option>
-                        </select>
-                      </label>
+                      <GlideField
+                        label="Timezone"
+                        value={timezone}
+                        options={[
+                          { value: 'Local Timezone', label: 'Local Timezone' },
+                          { value: 'Pacific Time (PT)', label: 'Pacific Time (PT)' },
+                          { value: 'Eastern Time (ET)', label: 'Eastern Time (ET)' },
+                          { value: 'UTC / GMT', label: 'UTC / GMT' },
+                          { value: 'India Standard Time (IST)', label: 'India Standard Time (IST)' },
+                        ]}
+                        onChange={setTimezone}
+                      />
                     </div>
 
                     <div className="profile-save">
                       <span>
                         <Check size={14} /> Changes save automatically
                       </span>
-                      <button
-                        className="primary-button"
-                        onClick={() => setMessage('Profile updated.')}
-                      >
+                      <SpecularCta onClick={() => setMessage('Profile updated.')} ariaLabel="Save changes">
                         Save changes
-                      </button>
+                      </SpecularCta>
                     </div>
                   </div>
                 </section>

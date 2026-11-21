@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { AlertCircle, BookOpen, FlaskConical, Network, RefreshCw, ShieldCheck, Sparkles } from 'lucide-react';
 import { apiRequest, apiRequestSafe } from '../services/api';
+import LineSidebar from './react-bits/LineSidebar';
+import { SpecularCta } from './ui/reactBitsAdapters';
 
 type LearningContent = {
   title: string;
@@ -65,12 +67,23 @@ export default function LearningHub(){
         <button className="neuronutri-refresh" type="button" onClick={()=>void generate()} disabled={loading} aria-label="Regenerate explainer"><RefreshCw size={15}/></button>
       </div>
       <div className="learning-ai-controls">
-        <label>Topic
-          <select value={topic} onChange={(event)=>setTopic(event.target.value)} disabled={loading}>
-            {explainerTopics.map((item)=><option key={item.id} value={item.id}>{item.label}</option>)}
-          </select>
-        </label>
-        <button className="primary" type="button" onClick={()=>void generate()} disabled={loading}>{loading?'Generating…':'Generate explainer'}</button>
+        <div className="learning-topic-select">
+          <span className="nt-field-label">Topic</span>
+          <LineSidebar
+            items={explainerTopics.map((item) => item.label)}
+            accentColor="#64172F"
+            textColor="#2d3035"
+            markerColor="#B77B55"
+            showIndex={false}
+            showMarker
+            fontSize={0.82}
+            itemGap={8}
+            defaultActive={explainerTopics.findIndex((item) => item.id === topic)}
+            onItemClick={(index) => setTopic(explainerTopics[index].id)}
+            className="nt-line-topics"
+          />
+        </div>
+        <SpecularCta type="button" onClick={() => void generate()} loading={loading} loadingText="Generating…" ariaLabel="Generate explainer">Generate explainer</SpecularCta>
       </div>
       {error&&<div className="habit-empty learning-ai-error"><AlertCircle size={15}/>{error}</div>}
       {learning&&!error&&<div className="learning-ai-result">

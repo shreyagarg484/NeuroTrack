@@ -1,5 +1,6 @@
 import React from 'react';
 import Sparkline from './Sparkline';
+import { AnimatedNumber, GlowCard } from './reactBitsAdapters';
 
 interface MetricCardProps {
   label: string;
@@ -25,27 +26,35 @@ export default function MetricCard({
   onClick,
 }: MetricCardProps) {
   return (
-    <article
-      className={`metric-card ${accent ? 'metric-accent' : ''} ${onClick ? 'cursor-pointer hover:shadow-md' : ''}`}
+    <GlowCard
+      className={`metric-card-shell ${onClick ? 'cursor-pointer' : ''}`}
       onClick={onClick}
+      glowColor={accent ? 'rgba(183, 123, 85, 0.2)' : 'rgba(100, 23, 47, 0.16)'}
     >
-      <div className="metric-top">
-        <span>
-          {icon}
-          {label}
-        </span>
-      </div>
-      <div className="metric-value">
-        {value} {suffix && <small>{suffix}</small>}
-      </div>
-      <div className="metric-bottom">
-        <div>
-          <strong>{change}</strong>
-          <span>{context}</span>
+      <article
+        className={`metric-card ${accent ? 'metric-accent' : ''}`}
+        role={onClick ? 'button' : undefined}
+        tabIndex={onClick ? 0 : undefined}
+        onKeyDown={onClick ? (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onClick(); } } : undefined}
+      >
+        <div className="metric-top">
+          <span>
+            {icon}
+            {label}
+          </span>
         </div>
-        <Sparkline variant={chart} />
-      </div>
-    </article>
+        <div className="metric-value">
+          <AnimatedNumber value={value} /> {suffix && <small>{suffix}</small>}
+        </div>
+        <div className="metric-bottom">
+          <div>
+            <strong>{change}</strong>
+            <span>{context}</span>
+          </div>
+          <Sparkline variant={chart} />
+        </div>
+      </article>
+    </GlowCard>
   );
 }
 

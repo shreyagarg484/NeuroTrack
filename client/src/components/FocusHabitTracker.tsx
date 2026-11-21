@@ -34,7 +34,7 @@ const formatDate = (date: string) => new Date(`${date}T12:00:00`).toLocaleDateSt
 
 export default function FocusHabitTracker() {
   const [entries, setEntries] = useState<Habit[]>([]), [form, setForm] = useState<HabitForm>(blank), [loading, setLoading] = useState(true), [saving, setSaving] = useState(false), [error, setError] = useState(''), [notice, setNotice] = useState('');
-  const [tab, setTab] = useState<'daily'|'deep-work'>('deep-work');
+  const [tab, setTab] = useState<'daily'|'deep-work'>('daily');
   const [mode, setMode] = useState<'choose'|'manual'|'speech'>('choose');
   const [transcript, setTranscript] = useState('');
   const [parsedSummary, setParsedSummary] = useState<string[]>([]);
@@ -98,19 +98,21 @@ export default function FocusHabitTracker() {
   return <div className="focus-habit-module">
     <div className="focus-habit-tabs" role="tablist" aria-label="Focus tools"><button role="tab" aria-selected={tab==='daily'} className={tab==='daily'?'active':''} onClick={()=>setTab('daily')}><Smartphone size={15}/> Daily habits</button><button role="tab" aria-selected={tab==='deep-work'} className={tab==='deep-work'?'active':''} onClick={()=>setTab('deep-work')}><Timer size={15}/> Deep Work & Audio</button></div>
     {tab==='deep-work' ? <DeepWorkFocus/> : mode==='choose' ? <>
-      <section className="panel focus-habit-form">
-        <div className="panel-head"><div><span className="focus-habit-kicker"><Smartphone size={13}/> DAILY HABIT LOG</span><h2>Capture your focus context</h2><p>Record what your day looked like alongside task sessions.</p></div></div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 16 }}>
-          <button type="button" className="primary" style={{ minHeight: 120, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8 }} onClick={() => setMode('speech')}><Mic size={28}/><strong>Text input</strong><small>Record your day by voice; we auto-fill the fields</small></button>
-          <button type="button" className="secondary" style={{ minHeight: 120, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8 }} onClick={() => setMode('manual')}><Pencil size={28}/><strong>Manual input</strong><small>Enter each field by hand</small></button>
+      <section className="context-journal" aria-label="Daily habit log entry options">
+        <div className="panel context-form">
+          <div className="panel-head"><div><span className="task-chip"><Smartphone size={14}/> FOCUS &amp; DAILY HABITS</span><h2>Capture your focus context</h2><p>Record what your day looked like alongside task sessions.</p></div></div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 16 }}>
+            <button type="button" className="primary" style={{ minHeight: 120, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8 }} onClick={() => setMode('speech')}><Mic size={28}/><strong>Text input</strong><small>Record your day by voice; we auto-fill the fields</small></button>
+            <button type="button" className="secondary" style={{ minHeight: 120, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8 }} onClick={() => setMode('manual')}><Pencil size={28}/><strong>Manual input</strong><small>Enter each field by hand</small></button>
+          </div>
         </div>
+        {history}
       </section>
       {impactCard}
-      {history}
     </> : <>
       <div style={{ marginBottom: 12 }}><button className="secondary" type="button" onClick={backToChoose}><X size={14}/> Back</button></div>
-      {mode==='speech' && <section className="panel focus-habit-form">
-        <div className="panel-head"><div><span className="focus-habit-kicker"><Mic size={13}/> VOICE DAILY LOG</span><h2>Record by voice</h2><p>Tap dictate, speak your day, and we’ll auto-fill the fields.</p></div></div>
+      {mode==='speech' && <section className="panel context-form" aria-label="Record daily habit log by voice">
+        <div className="panel-head"><div><span className="task-chip"><Mic size={14}/> FOCUS &amp; DAILY HABITS</span><h2>Record by voice</h2><p>Tap dictate, speak your day, and we’ll auto-fill the fields.</p></div></div>
         <div style={{ margin: '12px 0' }}><VoiceInputButton label="Dictate" onTranscript={appendTranscript} /></div>
         <label className="habit-field">Transcription <small>Review &amp; edit</small><textarea rows={4} maxLength={2000} value={transcript} onChange={(e) => setTranscript(e.target.value)} placeholder="Your recording will appear here…" /></label>
         {parsedSummary.length > 0 && <div className="context-message success" role="status"><Check size={15}/> Auto-filled: {parsedSummary.join(' · ')}</div>}

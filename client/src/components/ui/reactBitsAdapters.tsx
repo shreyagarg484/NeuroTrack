@@ -6,6 +6,7 @@
 import {
   useCallback,
   useEffect,
+  useRef,
   useState,
   type CSSProperties,
   type ReactNode,
@@ -45,6 +46,40 @@ export function usePrefersReducedMotion() {
     return () => query.removeEventListener?.('change', update);
   }, []);
   return reduced;
+}
+
+/* -------------------------------------------------------- animated numbers */
+
+/** Counts to a new data value with a short, reduced-motion-aware tween. */
+export function AnimatedNumber({ value, duration = 520 }: { value: string | number; duration?: number }) {
+  const target = Number(value);
+  const numeric = Number.isFinite(target);
+  const [display, setDisplay] = useState(target);
+  const previous = useRef(target);
+  const reduced = usePrefersReducedMotion();
+
+  useEffect(() => {
+    if (!numeric) return;
+    if (reduced || previous.current === target) {
+      previous.current = target;
+      setDisplay(target);
+      return;
+    }
+    const from = previous.current;
+    let frame = 0;
+    const start = performance.now();
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - t, 3);
+      setDisplay(Math.round(from + (target - from) * eased));
+      if (t < 1) frame = requestAnimationFrame(tick);
+      else previous.current = target;
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [target, duration, reduced, numeric]);
+
+  return <>{numeric ? display : value}</>;
 }
 
 /* -------------------------------------------------------------- glow cards */

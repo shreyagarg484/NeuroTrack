@@ -16,6 +16,7 @@ import {
   Timer,
   X,
 } from 'lucide-react';
+import { Magnetic } from './ui/reactBitsAdapters';
 
 export interface SidebarProps {
   active: string;
@@ -51,17 +52,19 @@ export default function Sidebar({
   return (
     <aside className={`sidebar ${open ? 'sidebar-open open' : ''}`}>
       <div className="flex items-center justify-between">
-        <button
-          className="brand-lockup cursor-pointer"
-          onClick={() => handleNav('Overview')}
-        >
-          <div className="brand-mark">
-            <Brain size={19} strokeWidth={2.3} />
-          </div>
-          <span>
-            neuro<span>track</span>
-          </span>
-        </button>
+        <Magnetic strength={0.1} className="nt-brand-magnetic">
+          <button
+            className="brand-lockup cursor-pointer"
+            onClick={() => handleNav('Overview')}
+          >
+            <div className="brand-mark">
+              <Brain size={19} strokeWidth={2.3} />
+            </div>
+            <span>
+              neuro<span>track</span>
+            </span>
+          </button>
+        </Magnetic>
         {open && (
           <button
             className="icon-button lg:hidden"

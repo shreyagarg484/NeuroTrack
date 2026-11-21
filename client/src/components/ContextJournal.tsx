@@ -3,6 +3,7 @@ import { Activity, AlertCircle, BookOpen, CalendarDays, Check, Coffee, Mic, Moon
 import HydrationTracker from './HydrationTracker';
 import VoiceInputButton from './VoiceInputButton';
 import { apiRequest } from '../services/api';
+import { ElasticRange, SpecularCta } from './ui/reactBitsAdapters';
 
 type ContextEntry = {
   id: number;
@@ -185,16 +186,16 @@ export default function ContextJournal() {
         <label className="context-number-label"><span><Moon size={14} /> Sleep duration <small>0–24 hours</small></span><div className="input-unit"><input type="number" min="0" max="24" step="0.5" placeholder="Optional" value={sleepDuration} onChange={(event) => setSleepDuration(event.target.value)} /><b>hours</b></div></label>
         <label className="context-number-label"><span><Coffee size={14} /> Caffeine <small>0–30 cups</small></span><div className="input-unit"><input type="number" min="0" max="30" step="0.5" placeholder="Optional" value={caffeine} onChange={(event) => setCaffeine(event.target.value)} /><b>cups</b></div></label>
         <label className="context-number-label"><span><Activity size={14} /> Exercise <small>0–1,440 minutes</small></span><div className="input-unit"><input type="number" min="0" max="1440" step="5" placeholder="Optional" value={exercise} onChange={(event) => setExercise(event.target.value)} /><b>minutes</b></div></label>
-        <div className="context-scale"><label htmlFor="context-sleep-quality">Sleep quality <b>{sleepQuality} / 5</b></label><input id="context-sleep-quality" type="range" min="1" max="5" step="1" value={sleepQuality} onChange={(event) => setSleepQuality(Number(event.target.value))} /><div className="range-labels"><span>Poor</span><span>Restful</span></div></div>
-        <div className="context-scale"><label htmlFor="context-mood">Mood <b>{mood} / 5</b></label><input id="context-mood" type="range" min="1" max="5" step="1" value={mood} onChange={(event) => setMood(Number(event.target.value))} /><div className="range-labels"><span>Low</span><span>Good</span></div></div>
-        <div className="context-scale"><label htmlFor="context-stress">Stress <b>{stress} / 5</b></label><input id="context-stress" type="range" min="1" max="5" step="1" value={stress} onChange={(event) => setStress(Number(event.target.value))} /><div className="range-labels"><span>Low</span><span>High</span></div></div>
-        <div className="context-scale"><label htmlFor="context-energy">Energy <b>{energy} / 5</b></label><input id="context-energy" type="range" min="1" max="5" step="1" value={energy} onChange={(event) => setEnergy(Number(event.target.value))} /><div className="range-labels"><span>Low</span><span>High</span></div></div>
+        <div className="context-scale"><ElasticRange label="Sleep quality" value={sleepQuality} min={1} max={5} step={1} onChange={setSleepQuality} formatValue={(value) => `${value} / 5`} ariaLabel="Sleep quality" /><div className="range-labels"><span>Poor</span><span>Restful</span></div></div>
+        <div className="context-scale"><ElasticRange label="Mood" value={mood} min={1} max={5} step={1} onChange={setMood} formatValue={(value) => `${value} / 5`} ariaLabel="Mood" /><div className="range-labels"><span>Low</span><span>Good</span></div></div>
+        <div className="context-scale"><ElasticRange label="Stress" value={stress} min={1} max={5} step={1} onChange={setStress} formatValue={(value) => `${value} / 5`} ariaLabel="Stress" /><div className="range-labels"><span>Low</span><span>High</span></div></div>
+        <div className="context-scale"><ElasticRange label="Energy" value={energy} min={1} max={5} step={1} onChange={setEnergy} formatValue={(value) => `${value} / 5`} ariaLabel="Energy" /><div className="range-labels"><span>Low</span><span>High</span></div></div>
         <label className="context-notes"><span>Notes <small>Optional · 500 characters</small></span><div className="voice-input-row"><textarea rows={3} maxLength={500} placeholder="Anything about your day you’d like to remember" value={notes} onChange={(event) => setNotes(event.target.value)} />{mode === 'manual' ? null : <VoiceInputButton label="Dictate notes" onTranscript={(text) => setTranscript((prev) => (prev.trim() ? `${prev.trim()} ${text}` : text))} />}</div></label>
       </div>
       <HydrationTracker value={waterIntakeLiters} onChange={setWaterIntakeLiters}/>
       {error && <div className="context-message error" role="alert"><AlertCircle size={15} />{error}</div>}
       {message && <div className="context-message success" role="status"><Check size={15} />{message}</div>}
-      <div className="context-form-foot"><small><ShieldCheck size={13} /> Personal context stays in your local NeuroTrack database.</small><div className="context-form-actions">{editingId !== null && <button className="secondary" type="button" disabled={saving} onClick={resetForm}><X size={14}/> Cancel</button>}<button className="primary" type="submit" disabled={saving}>{saving ? <><RefreshCw className="spin" size={14} /> Saving…</> : editingId === null ? 'Save entry' : 'Update entry'}</button></div></div>
+      <div className="context-form-foot"><small><ShieldCheck size={13} /> Personal context stays in your local NeuroTrack database.</small><div className="context-form-actions">{editingId !== null && <button className="secondary" type="button" disabled={saving} onClick={resetForm}><X size={14}/> Cancel</button>}<SpecularCta type="submit" loading={saving} loadingText="Saving…" ariaLabel={editingId === null ? 'Save entry' : 'Update entry'}>{editingId === null ? 'Save entry' : 'Update entry'}</SpecularCta></div></div>
     </form>
   );
 

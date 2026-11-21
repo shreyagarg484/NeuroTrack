@@ -1,0 +1,279 @@
+/* NeuroTrack × React Bits — theme bridge and dashboard polish.
+   Loaded after index.css so the warm cream identity always wins. */
+
+html, body { overflow-x: hidden; }
+
+:root {
+  --nt-plum: #64172f;
+  --nt-plum-deep: #501225;
+  --nt-sage: #47745e;
+  --nt-gold: #b77b55;
+  --nt-focus: #a96369;
+}
+
+/* ---------------------------------------------------------------- cards */
+.nt-glow-card {
+  background: var(--cream) !important;
+  border-radius: 12px !important;
+  transition: transform .22s ease, box-shadow .22s ease !important;
+}
+.nt-glow-card:hover {
+  transform: translateY(-2px);
+}
+.nt-glow-card > .spotlight-card__light,
+.nt-glow-card > .spotlight-card__edge,
+.nt-glow-card > .spotlight-card__border {
+  pointer-events: none;
+}
+.nt-glow-card :is(h2, h3, p, span, b, button) {
+  position: relative;
+  z-index: 2;
+}
+
+/* --------------------------------------------------------------- buttons */
+.nt-specular {
+  font-family: var(--font-body) !important;
+  font-size: 13px !important;
+  font-weight: 650 !important;
+  letter-spacing: .01em !important;
+  transition: transform .18s ease, filter .18s ease, box-shadow .18s ease !important;
+}
+.nt-specular--primary {
+  box-shadow: 0 6px 16px rgba(100, 23, 47, .2) !important;
+}
+.nt-specular--primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.08);
+  box-shadow: 0 10px 22px rgba(100, 23, 47, .28) !important;
+}
+.nt-specular--secondary {
+  box-shadow: 0 2px 8px rgba(80, 18, 37, .07) !important;
+}
+.nt-specular:disabled {
+  opacity: .55 !important;
+  transform: none !important;
+}
+.nt-specular-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+.nt-spinner {
+  width: 13px;
+  height: 13px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: nt-spin .7s linear infinite;
+}
+@keyframes nt-spin { to { transform: rotate(360deg); } }
+
+/* --------------------------------------------------------------- fields */
+.nt-field-label {
+  display: block;
+  margin-bottom: 7px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .7px;
+  text-transform: uppercase;
+}
+.nt-glide-field,
+.nt-range-field,
+.nt-wake-field { min-width: 0; }
+.nt-glide-field .glide-select,
+.nt-range-field .elastic-slider,
+.nt-wake-field .wake-slider { width: 100%; }
+.nt-range-field { padding: 4px 2px 10px; }
+.nt-wake-field { padding: 2px 0 8px; }
+
+/* ------------------------------------------------------------- motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
+.reduced-motion *,
+.reduced-motion *::before,
+.reduced-motion *::after {
+  animation-duration: .01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: .01ms !important;
+}
+
+/* --------------------------------------------------------- dashboard polish */
+.metric-card,
+.stat-card,
+.big-stat,
+.insight-metric,
+.featured-assessment,
+.hydration-tracker,
+.insight-strip,
+.observation-panel {
+  border-radius: 12px !important;
+}
+.metric-card { min-height: 148px; }
+.metric-card .metric-value,
+.stat-card strong,
+.big-stat strong {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.03em;
+}
+.page-heading h1 { letter-spacing: -.035em; }
+.eyebrow, .panel-kicker, .workspace-label { letter-spacing: 1.45px; }
+.panel-head h2, .panel-heading h3 { letter-spacing: -.02em; }
+
+.insight-strip {
+  border-left: 3px solid var(--nt-gold) !important;
+}
+.observation-panel {
+  border-top: 3px solid var(--nt-sage) !important;
+}
+
+/* Charts: calmer grid, clearer focus line */
+.recharts-cartesian-grid-horizontal line { stroke: #e6d9cb; }
+.recharts-cartesian-axis-tick text { fill: #805348; font-family: var(--font-body); font-size: 11px; }
+.recharts-default-tooltip {
+  border: 1px solid var(--line) !important;
+  border-radius: 9px !important;
+  background: var(--cream) !important;
+  box-shadow: var(--shadow) !important;
+  font-family: var(--font-body) !important;
+}
+
+/* Better empty states */
+.habit-empty,
+.analytics-empty,
+.task-empty,
+.reaction-empty {
+  border: 1px dashed var(--line-dark);
+  border-radius: 10px;
+  background: rgba(251, 247, 241, .6);
+}
+
+/* Consistent focus ring across enhanced controls */
+:where(button, a, input, select, textarea, [role='button']):focus-visible {
+  outline: 2px solid var(--nt-focus) !important;
+  outline-offset: 3px !important;
+}
+
+/* Staggered menu (mobile) uses NeuroTrack colours */
+.staggered-menu-wrapper { z-index: 60; }
+.nt-mobile-menu.fixed-wrapper { z-index: 70; }
+.nt-mobile-menu .staggered-menu-header {
+  padding: 0;
+  top: 9px;
+  left: 14px;
+  width: auto;
+}
+.nt-mobile-menu .sm-logo { display: none; }
+.nt-mobile-menu .sm-toggle {
+  color: #64172f;
+  font-family: var(--font-body);
+  min-height: 40px;
+  padding: 0 10px;
+  border-radius: 8px;
+}
+.nt-mobile-menu .sm-toggle:hover { background: var(--burgundy-soft); }
+.staggered-menu-panel { background: var(--canvas) !important; }
+.sm-panel-itemLabel { font-family: var(--font-display) !important; color: var(--burgundy-deep) !important; }
+.mobile-menu { display: none !important; }
+@media (min-width: 851px) {
+  .nt-mobile-menu { display: none !important; }
+}
+
+/* Animated content must never create horizontal overflow */
+.animated-content, [data-animated-content] { max-width: 100%; }
+
+/* ------------------------------------------------------ auth enhancements */
+.auth-mode-tabs {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  margin: 0 0 22px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--canvas-deep);
+}
+.auth-mode-tabs button {
+  padding: 8px 14px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+.auth-mode-tabs button.active {
+  background: var(--cream);
+  border-color: rgba(100, 23, 47, .3);
+  color: var(--burgundy);
+  box-shadow: 0 2px 6px rgba(80, 18, 37, .07);
+}
+.auth-field { position: relative; display: grid; gap: 7px; }
+.auth-field > span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .6px;
+  text-transform: uppercase;
+}
+.auth-field.has-error input { border-color: #b91c1c !important; }
+.auth-field-error { color: #a51d30; font-size: 11px; line-height: 1.4; }
+.password-input { position: relative; display: flex; align-items: center; }
+.password-input input { width: 100%; padding-right: 76px !important; }
+.password-input > button {
+  position: absolute;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px;
+  background: transparent;
+  color: var(--burgundy);
+  font-size: 11px;
+  font-weight: 700;
+}
+.auth-match { position: absolute; right: 10px; color: var(--green); }
+.password-strength { display: flex; align-items: center; gap: 4px; }
+.password-strength i {
+  height: 4px;
+  flex: 1;
+  border-radius: 99px;
+  background: var(--line);
+  transition: background .2s ease;
+}
+.password-strength i.level-1 { background: #b04b52; }
+.password-strength i.level-2 { background: var(--sand); }
+.password-strength i.level-3 { background: var(--green); }
+.password-strength i.level-4 { background: var(--burgundy); }
+.password-strength small { min-width: 48px; margin-left: 6px; color: var(--muted); font-size: 10px; }
+.auth-submit { width: 100%; margin-top: 4px; }
+
+/* ------------------------- hydration goal + assessment polish */
+.hydration-goal-control { margin: 4px 0 10px; }
+.test-library-card { position: relative; }
+.test-library-card::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: 12px;
+  pointer-events: none;
+  box-shadow: 0 0 0 1px rgba(100, 23, 47, 0);
+  transition: box-shadow .2s ease;
+}
+.test-library-card:hover::after {
+  box-shadow: 0 0 0 1px rgba(100, 23, 47, .26), 0 10px 24px -14px rgba(100, 23, 47, .4);
+}
+.insight-glow, .hydration-glow, .assessment-glow { margin: 0; }
+.learning-topic-select { max-width: 420px; }
+.nt-line-topics { margin-top: 6px; }
+
+@media (max-width: 850px) {
+  .nt-specular { min-height: 42px; }
+  .nt-glow-card:hover { transform: none; }
+}
