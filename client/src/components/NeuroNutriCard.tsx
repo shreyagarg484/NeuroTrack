@@ -45,7 +45,6 @@ export default function NeuroNutriCard() {
 
   async function loadLatest() {
     setLoading(true);
-    setError(null);
     try {
       const payload: unknown = await apiRequest('/api/checkins/latest');
       if (!payload || typeof payload !== 'object' || !('checkin' in payload)) throw new Error('The check-in response was not in the expected format.');
