@@ -2338,38 +2338,34 @@ input, select, textarea {
   border-color: var(--burgundy);
 }
 
-.hydration-card {
-  padding: 24px;
-  border-radius: 9px;
-  background: #f4eade;
-  border: 1px solid #d9c7b6;
-  margin: 18px 0;
+.hydration-tracker {
+  padding: 16px;
+  border: 1px solid #28344B;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #151F33, #101827);
+  color: #f9fafb;
 }
-.glasses-grid {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin: 14px 0;
-}
-.glass-btn {
-  width: 38px;
-  height: 48px;
-  border-radius: 6px 6px 10px 10px;
-  border: 1px solid #c2b09e;
-  background: var(--cream);
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  overflow: hidden;
-  padding: 2px;
-}
-.glass-btn.filled { border-color: #3b82f6; }
-.glass-fill {
-  width: 100%;
-  border-radius: 0 0 7px 7px;
-  background: #60a5fa;
-  transition: height 0.2s ease;
-}
+.hydration-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.hydration-eyebrow { display: flex; align-items: center; gap: 5px; margin-bottom: 5px; color: #67b9ff; font: 700 7px 'DM Sans', sans-serif; letter-spacing: .1em; }
+.hydration-heading h2 { margin: 0; color: #f9fafb; font: 650 13px 'DM Sans', sans-serif; }
+.hydration-total { padding: 5px 8px; border: 1px solid #30405b; border-radius: 7px; background: #0f172a; color: #c9e4ff; font: 600 9px 'DM Mono', monospace; white-space: nowrap; }
+.hydration-progress { height: 11px; margin: 14px 0 12px; overflow: hidden; border-radius: 99px; background: #0f172a; box-shadow: inset 0 1px 3px #0008; }
+.hydration-progress-fill { height: 100%; border-radius: inherit; background: linear-gradient(90deg, #3b82f6, #06B6D4); box-shadow: 0 0 12px #10b98155; transition: width .45s cubic-bezier(.2, .7, .2, 1); }
+.hydration-actions { display: flex; gap: 7px; }
+.hydration-actions button { display: flex; align-items: center; justify-content: center; gap: 5px; min-height: 34px; padding: 7px 10px; border-radius: 7px; font: 600 8px 'DM Sans', sans-serif; transition: transform .15s, border-color .15s, background .15s; }
+.hydration-add { flex: 1; border: 1px solid #347cd4; background: #1d4f87; color: #f4f9ff; }
+.hydration-add:hover:not(:disabled) { transform: translateY(-1px); background: #2563a8; }
+.hydration-add:disabled { opacity: .5; cursor: not-allowed; }
+.hydration-add.highlighted { background: #2563a8; border-color: #3b82f6; box-shadow: 0 0 14px #3b82f655; }
+.hydration-add.highlighted:hover:not(:disabled) { background: #1d4f87; border-color: #347cd4; box-shadow: none; }
+.hydration-remind { border: 1px solid #34435c; background: #111b2c; color: #aebed3; }
+.hydration-remind:hover { border-color: #8B5CF6; color: #d9caff; }
+.hydration-footer { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: 9px; color: #8292a8; font-size: 7px; }
+.hydration-footer svg { color: #10B981; }
+.context-form > .hydration-tracker { margin: 16px 0 3px; }
+.overview-hydration { margin: 0 0 20px; }
+#toast-notification { position: fixed; bottom: 20px; right: 20px; z-index: 1000; max-width: min(380px, calc(100vw - 40px)); padding: 14px 17px; border: 1px solid #3b82f6; border-radius: 10px; background: #1f2937; color: #f9fafb; box-shadow: 0 14px 44px #02061799; font: 600 11px 'DM Sans', sans-serif; line-height: 1.55; animation: hydration-toast-in .22s ease-out; }
+@keyframes hydration-toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
 /* ==========================================================================
    Task Scheduler & Flexible Study Plan
@@ -3132,4 +3128,85 @@ input, select, textarea {
   background: var(--surface);
   border: 1px solid var(--line);
   color: var(--muted);
+}
+
+/* Voice input (Context Journal) */
+.voice-input-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+}
+.voice-input-row textarea {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.voice-input-wrapper {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+.voice-input-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-light);
+  color: var(--ink);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.15s;
+}
+.voice-input-btn:hover:not(:disabled) {
+  border-color: var(--burgundy);
+  color: var(--burgundy);
+  transform: translateY(-1px);
+}
+.voice-input-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.voice-input-btn.voice-listening {
+  background: #f7e8ea;
+  border-color: var(--burgundy);
+  color: var(--burgundy);
+  animation: voice-pulse 1.2s ease-in-out infinite;
+}
+.voice-input-btn.voice-processing {
+  background: #f7e8ea;
+  border-color: var(--burgundy);
+  color: var(--burgundy);
+}
+.voice-input-btn.voice-error {
+  background: #f7e8ea;
+  border-color: #b33a3a;
+  color: #b33a3a;
+}
+.voice-input-error {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: #b33a3a;
+}
+.voice-input-error-dismiss {
+  border: 0;
+  background: transparent;
+  color: #b33a3a;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+}
+.voice-input-unsupported {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-top: 4px;
+}
+@keyframes voice-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
 }

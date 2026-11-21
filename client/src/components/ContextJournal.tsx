@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Activity, AlertCircle, BookOpen, CalendarDays, Check, Coffee, Moon, Pencil, RefreshCw, ShieldCheck, Trash2, X } from 'lucide-react';
 import HydrationTracker from './HydrationTracker';
+import VoiceInputButton from './VoiceInputButton';
 import { apiRequest } from '../services/api';
 
 type ContextEntry = {
@@ -137,7 +138,7 @@ export default function ContextJournal() {
         <div className="context-scale"><label htmlFor="context-mood">Mood <b>{mood} / 5</b></label><input id="context-mood" type="range" min="1" max="5" step="1" value={mood} onChange={(event) => setMood(Number(event.target.value))} /><div className="range-labels"><span>Low</span><span>Good</span></div></div>
         <div className="context-scale"><label htmlFor="context-stress">Stress <b>{stress} / 5</b></label><input id="context-stress" type="range" min="1" max="5" step="1" value={stress} onChange={(event) => setStress(Number(event.target.value))} /><div className="range-labels"><span>Low</span><span>High</span></div></div>
         <div className="context-scale"><label htmlFor="context-energy">Energy <b>{energy} / 5</b></label><input id="context-energy" type="range" min="1" max="5" step="1" value={energy} onChange={(event) => setEnergy(Number(event.target.value))} /><div className="range-labels"><span>Low</span><span>High</span></div></div>
-        <label className="context-notes"><span>Notes <small>Optional · 500 characters</small></span><textarea rows={3} maxLength={500} placeholder="Anything about your day you’d like to remember" value={notes} onChange={(event) => setNotes(event.target.value)} /></label>
+        <label className="context-notes"><span>Notes <small>Optional · 500 characters</small></span><div className="voice-input-row"><textarea rows={3} maxLength={500} placeholder="Anything about your day you’d like to remember" value={notes} onChange={(event) => setNotes(event.target.value)} /><VoiceInputButton label="Dictate notes" onTranscript={(text) => setNotes((prev) => (prev.trim() ? `${prev.trim()} ${text}` : text))} /></div></label>
       </div>
       <HydrationTracker value={waterIntakeLiters} onChange={setWaterIntakeLiters}/>
       {error && <div className="context-message error" role="alert"><AlertCircle size={15} />{error}</div>}
