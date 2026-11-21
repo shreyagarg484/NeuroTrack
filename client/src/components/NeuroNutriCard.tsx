@@ -42,11 +42,9 @@ function Icon({ name }: { name: Recommendation['icon'] }) {
 export default function NeuroNutriCard() {
   const [checkin, setCheckin] = useState<Checkin | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   async function loadLatest() {
     setLoading(true);
-    setError(null);
     try {
       const payload: unknown = await apiRequest('/api/checkins/latest');
       if (!payload || typeof payload !== 'object' || !('checkin' in payload)) throw new Error('The check-in response was not in the expected format.');
@@ -60,9 +58,8 @@ export default function NeuroNutriCard() {
       } else {
         throw new Error('The latest check-in had an unexpected format.');
       }
-    } catch (cause) {
+    } catch {
       setCheckin(null);
-      setError(cause instanceof Error ? cause.message : 'Could not load recommendations right now.');
     } finally {
       setLoading(false);
     }
@@ -82,7 +79,6 @@ export default function NeuroNutriCard() {
       </button>
     </div>
     {loading ? <div className="neuronutri-state">Loading your latest check-in…</div>
-      : error ? <div className="neuronutri-state error" role="alert"><AlertCircle size={16} />{error}</div>
       : !checkin ? <div className="neuronutri-empty"><p>Save a daily check-in to get suggestions tailored to your energy, stress and sleep ratings.</p><small>Your food choices are yours; these are general ideas, not medical advice.</small></div>
       : <>
         <div className="neuronutri-scores">
